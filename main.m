@@ -42,7 +42,7 @@ end
 
 %% Bootstrap
 % need to set bootstrap_frames
-bootstrap_frames_KITTI = [0;2]; 
+bootstrap_frames_KITTI = [1;3]; %1 and 3 seems fine for now!
 bootstrap_frames_Malaga = [1;3];
 bootstrap_frames_parking = [1;3];
 

@@ -8,7 +8,7 @@
 %
 % Output:
 %  - P(4,N): homogeneous coordinates of 3-D points
-
+ 
 function P = linearTriangulation(p1,p2,M1,M2)
 
 % Sanity checks

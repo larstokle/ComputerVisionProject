@@ -58,39 +58,31 @@ E = estimateEssentialMatrix(validStrongestCornersCoordHom, validTrackedPointsHom
 %% homogenous transformation matrix
 H_10 = [R_10, T_10;
        0, 0, 0, 1];          % frame 0 to 1
-H_01 = inv(H_10);           % frame 1 to 0
+H_01 = H_10\eye(4);           % frame 1 to 0
 
 H_W1 = H_W0*H_01;           % frame 1 to World
 
-H_0W = inv(H_W0);
-H_1W = inv(H_W1);
+H_0W = H_W0\eye(4);
+H_1W = H_W1\eye(4);
 
 %validation plot
 figure(2),clf;
 hold on;
-%     quiver(H_I0(1,4),H_I0(2,4),H_0I(1,1),H_0I(2,1),'Color','r');
-%     quiver(H_I0(1,4),H_I0(2,4),H_0I(1,2),H_0I(2,2),'Color','g');
-%     quiver(H_I0(1,4),H_I0(2,4),H_0I(1,3),H_0I(2,3),'Color','b');
-%     
-%     quiver(H_I1(1,4),H_I1(2,4),H_1I(1,1),H_1I(2,1),'Color','r');
-%     quiver(H_I1(1,4),H_I1(2,4),H_1I(1,2),H_1I(2,2),'Color','g');
-%     quiver(H_I1(1,4),H_I1(2,4),H_1I(1,3),H_1I(2,3),'Color','b');
-quiver(H_W0(1,4),H_W0(2,4),H_W0(1,1),H_W0(2,1),'Color','r');
-quiver(H_W0(1,4),H_W0(2,4),H_W0(1,2),H_W0(2,2),'Color','g');
-quiver(H_W0(1,4),H_W0(2,4),H_W0(1,3),H_W0(2,3),'Color','b');
+quiver(H_W0(1,4),H_W0(2,4),H_W0(1,1),H_W0(2,1),'Color','r'); %camera0 x-axis in w
+quiver(H_W0(1,4),H_W0(2,4),H_W0(1,2),H_W0(2,2),'Color','g'); %camera0 y-axis in w
+quiver(H_W0(1,4),H_W0(2,4),H_W0(1,3),H_W0(2,3),'Color','b'); %camera0 z-axis in w
 
-quiver(H_W1(1,4),H_W1(2,4),H_W1(1,1),H_W1(2,1),'Color','r');
-quiver(H_W1(1,4),H_W1(2,4),H_W1(1,2),H_W1(2,2),'Color','g');
-quiver(H_W1(1,4),H_W1(2,4),H_W1(1,3),H_W1(2,3),'Color','b');
+quiver(H_W1(1,4),H_W1(2,4),H_W1(1,1),H_W1(2,1),'Color','r'); %camera1 x-axis in w
+quiver(H_W1(1,4),H_W1(2,4),H_W1(1,2),H_W1(2,2),'Color','g'); %camera1 y-axis in w
+quiver(H_W1(1,4),H_W1(2,4),H_W1(1,3),H_W1(2,3),'Color','b'); %camera1 z-axis in w
 axis equal;
 
 %% get landmarks in world coord
-%P_landmark_W = linearTriangulation(validStrongestCornersCoordHom, validTrackedPointsHom, H_0I(1:3,:), H_1I(1:3,:));
 P_landmark_W = linearTriangulation(validStrongestCornersCoordHom, validTrackedPointsHom, K0*H_0W(1:3,:), K1*H_1W(1:3,:));
 
 %validation plot
 scatter(P_landmark_W(1,:),P_landmark_W(2,:),'.b');
-
+axis equal;
 %% return values
 pose = H_W1;
 
@@ -99,4 +91,3 @@ state.landmarks = P_landmark_W;
 state.lastCorrespondencePoint = validTrackedPoints;
 state.lastCorrespondenceLandmarkIndex = (1:size(validTrackedPoints,2))';
 end
-
