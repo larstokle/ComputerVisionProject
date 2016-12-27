@@ -1,16 +1,21 @@
 function [pose, state] = initializeVO(img0, img1, K0, K1, H_W0)
-%initializeVO: finds position of second image and makes a list of landmarks
-%   
-%       Input: 
-%           img0:   first grayscale image of sequence
-%           img1:   first greyscale keyframe image of sequence
-%           K0:     intrinsic matrix for camera that took img0
-%           K1:     intrinsic matrix for camera that took img1
-%           H_W0:   homogenous transformation matrix from frame 0 to world
+%[pose, state] = initializeVO(img0, img1, K0, K1, H_W0):
 %
-%       Output:
-%           pose:   pose at img1
-%           state:  
+%Finds keypoints in img0 and tracks them to img1.
+%Then estimates the relative pose between img0 and img1.
+%Makes all the tracked keypoints into landmarks.
+%Updates the tracker with new keypoints
+%   
+%   Input: 
+%       img0:   first grayscale image of sequence
+%       img1:   first greyscale keyframe image of sequence
+%       K0:     intrinsic matrix for camera that took img0
+%       K1:     intrinsic matrix for camera that took img1
+%       H_W0:   homogenous transformation matrix from frame 0 to world
+%
+%   Output:
+%       pose:   pose at img1
+%       state:  
     
 %% Init
 k = 500;
@@ -72,13 +77,8 @@ H_1W = H_W1\eye(4);
 %validation plot
 figure(2),clf;
 hold on;
-quiver(H_W0(1,4),H_W0(2,4),H_W0(1,1),H_W0(2,1),'Color','r'); %camera0 x-axis in w
-quiver(H_W0(1,4),H_W0(2,4),H_W0(1,2),H_W0(2,2),'Color','g'); %camera0 y-axis in w
-quiver(H_W0(1,4),H_W0(2,4),H_W0(1,3),H_W0(2,3),'Color','b'); %camera0 z-axis in w
-
-quiver(H_W1(1,4),H_W1(2,4),H_W1(1,1),H_W1(2,1),'Color','r'); %camera1 x-axis in w
-quiver(H_W1(1,4),H_W1(2,4),H_W1(1,2),H_W1(2,2),'Color','g'); %camera1 y-axis in w
-quiver(H_W1(1,4),H_W1(2,4),H_W1(1,3),H_W1(2,3),'Color','b'); %camera1 z-axis in w
+plotPoseXY(gca, H_W0);
+plotPoseXY(gca, H_W1);
 axis equal;
 
 %% get landmarks in world coord
@@ -89,6 +89,7 @@ scatter(P_landmark_W(1,:),P_landmark_W(2,:),'.b');
 axis equal;
 
 %% update tracker
+%Should find new points to track here!!
 %hack to reinitialize??? :S
 release(pointTracker);
 initialize(pointTracker,validTrackedPoints',img1);

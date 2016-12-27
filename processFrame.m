@@ -1,5 +1,9 @@
 function [pose, state] = processFrame(img, K, H_W0, oldState)
-%initializeVO: finds position of second image and makes a list of landmarks
+%[pose, state] = processFrame(img, K, H_W0, oldState):
+%
+%Tracks keypoints from last image and estimates relative pose.
+%Finds new keypoints and updates tracker.
+%If keypoints are "good enough", are turned into landmarks
 %   
 %   Input:
 %       img:            image frame to process
