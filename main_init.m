@@ -69,8 +69,8 @@ else
     assert(false);
 end
 
-[pose, state] = initializeVO(img0, img1, K, K, pose0);
-last_frame = 50; %test length...
+[pose1, state] = initializeVO(img0, img1, K, K, pose0);
+
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
 for i = range
@@ -87,14 +87,8 @@ for i = range
     else
         assert(false);
     end
-    
-    [pose, state] = processFrame(image, K, pose, state);
-    
-    quiver(pose(1,4),pose(2,4),pose(1,1),pose(2,1),'Color','r'); %camera0 x-axis in w
-    quiver(pose(1,4),pose(2,4),pose(1,2),pose(2,2),'Color','g'); %camera0 y-axis in w
-    quiver(pose(1,4),pose(2,4),pose(1,3),pose(2,3),'Color','b'); %camera0 z-axis in w  
-   	drawnow;
-    
+    % Makes sure that plots refresh.    
+    pause(0.01);
     
     prev_img = image;
 end

@@ -7,6 +7,10 @@ function [pose, state] = initializeVO(img0, img1, K0, K1, H_W0)
 %           K0:     intrinsic matrix for camera that took img0
 %           K1:     intrinsic matrix for camera that took img1
 %           H_W0:   homogenous transformation matrix from frame 0 to world
+%
+%       Output:
+%           pose:   pose at img1
+%           state:  
     
 %% Init
 k = 500;
@@ -83,11 +87,18 @@ P_landmark_W = linearTriangulation(validStrongestCornersCoordHom, validTrackedPo
 %validation plot
 scatter(P_landmark_W(1,:),P_landmark_W(2,:),'.b');
 axis equal;
+
+%% update tracker
+%hack to reinitialize??? :S
+release(pointTracker);
+initialize(pointTracker,validTrackedPoints',img1);
+
 %% return values
 pose = H_W1;
 
 %maybe something else in state
 state.landmarks = P_landmark_W;
-state.lastCorrespondencePoint = validTrackedPoints;
-state.lastCorrespondenceLandmarkIndex = (1:size(validTrackedPoints,2))';
+state.keypoints = validTrackedPoints;
+state.tracker = pointTracker;
+%state.lastCorrespondenceLandmarkIndex = (1:size(validTrackedPoints,2))';
 end
