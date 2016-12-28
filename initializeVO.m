@@ -1,4 +1,4 @@
-function [pose, state] = initializeVO(img0, img1, K0, K1, H_W0)
+function [pose, state] = initializeVO(img0, img1, K0, K1, H_W0, numKeypoints)
 %[pose, state] = initializeVO(img0, img1, K0, K1, H_W0):
 %
 %Finds keypoints in img0 and tracks them to img1.
@@ -18,11 +18,10 @@ function [pose, state] = initializeVO(img0, img1, K0, K1, H_W0)
 %       state:  
     
 %% Init
-k = 500;
 
 %% find keypoints in img0
 corners = detectHarrisFeatures(img0, 'MinQuality', 0.2); %tryout, change with homemade or soln, SIFT??
-strongestCorners = corners.selectStrongest(k);
+strongestCorners = corners.selectStrongest(numKeypoints);
 strongestCornersCoord = strongestCorners.Location;
 
 %validation plot

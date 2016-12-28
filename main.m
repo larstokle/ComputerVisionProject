@@ -1,6 +1,9 @@
 %% Setup
 local_setup;
+addpath('.\all_solns\00_camera_projection');
+addpath('.\all_solns\01_pnp');
 addpath('.\all_solns\04_8point', '.\all_solns\04_8point\triangulation', '.\all_solns\04_8point\8point');
+addpath('.\all_solns\05_ransac');
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
@@ -69,8 +72,8 @@ else
     assert(false);
 end
 
-[pose, state] = initializeVO(img0, img1, K, K, pose0);
-last_frame = 50; %test length...
+[pose, state] = initializeVO(img0, img1, K, K, pose0,1000);
+last_frame = 10; %test length...
 figure(2);
 ax = gca;
 %% Continuous operation

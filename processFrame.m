@@ -8,7 +8,7 @@ function [pose, state] = processFrame(img, K, H_W0, oldState)
 %   Input:
 %       img:            image frame to process
 %       K:              intrinsic matrix of camera
-%       H_W0:           homogenous transformation to frame where the
+%       H_W0:           homogenous transformation to where the
 %           previous frame was
 %       oldState: struct...
 %       {
@@ -25,32 +25,39 @@ function [pose, state] = processFrame(img, K, H_W0, oldState)
 %           
 
 %% init
-numNewFeaturesToFind = 200;
-keypoints = oldState.keypoints;
-pointTracker = oldState.tracker;
+numNewFeaturesToFind = 500;
+
 P_landmarks_W = oldState.landmarks;
+numLandmarks = size(P_landmarks_W,2);
+
+establishedKeypoints = oldState.keypoints(:,1:numLandmarks);
+potensialKeypoints = oldState.keypoints(:,(numLandmarks+1):end);
+
+pointTracker = oldState.tracker;
+
+
 
 %% track points
-[newKeypoints, point_validity] = step(pointTracker, img); % implements klt, change to other implementation
-keypoints = keypoints(:,point_validity);
-newKeypoints = newKeypoints(point_validity,:)';
+[trackedEstablishedKeypoints, point_validity] = step(pointTracker, img); % implements klt, change to other implementation
+trackedEstablishedKeypoints = trackedEstablishedKeypoints(1:numLandmarks,:)';
+validTrackedEstablishedKeypoints = trackedEstablishedKeypoints(:,point_validity(1:numLandmarks));
+
+validEstablishedKeypoints = establishedKeypoints(:,point_validity(1:numLandmarks));
+%keypoints = keypoints(:,point_validity);
+%newKeypoints = trackedKeypoints(point_validity,:)';
 
 %% Estimate relative pose
-keypointsHom = [keypoints; ones(1, size(keypoints,2))];
-newKeypointsHom = [newKeypoints; ones(1, size(newKeypoints,2))];
+%validEstablishedKeypointsHom = [validEstablishedKeypoints; ones(1, size(validEstablishedKeypoints,2))];
+%validTrackedEstablishedKeypointsHom = [validTrackedEstablishedKeypoints; ones(1, size(validTrackedEstablishedKeypoints,2))];
+trackedLandmarks = P_landmarks_W(:, point_validity(1:numLandmarks));
 
-E = estimateEssentialMatrix(keypointsHom, newKeypointsHom, K, K);
-[R_10,u3] = decomposeEssentialMatrix(E);
-[R_10, T_10] = disambiguateRelativePose(R_10, u3, keypointsHom, newKeypointsHom, K, K);
+[H_W1, inliers] = ransacLocalization(validTrackedEstablishedKeypoints, trackedLandmarks, K);
+fprintf('number of inliers found: %i\n',sum(inliers));
+% E = estimateEssentialMatrix(establishedKeypointsHom, trackedEstablishedKeypointsHom, K, K);
+% [R_10,u3] = decomposeEssentialMatrix(E);
+% [R_10, T_10] = disambiguateRelativePose(R_10, u3, establishedKeypointsHom, trackedEstablishedKeypointsHom, K, K);
 
 %% compute homogenous transforms
-H_10 = [R_10, T_10;
-       0, 0, 0, 1];          % frame 0 to 1
-H_01 = H_10\eye(4);          % frame 1 to 0
-
-H_W1 = H_W0*H_01;           % frame 1 to World
-
-H_0W = H_W0\eye(4);         % frame World to 0
 H_1W = H_W1\eye(4);         % frame World to 1
 
 %% find new points to track
@@ -59,18 +66,18 @@ strongestCorners_i = corners_i.selectStrongest(numNewFeaturesToFind);
 strongestCornersCoord_i= strongestCorners_i.Location';
 
 %% merge new points with existing points
-newKeypoints = [newKeypoints, strongestCornersCoord_i];
-[~,inds,~] = unique(round(newKeypoints)', 'rows', 'stable');
-newKeypoints = newKeypoints(:,inds);
-
-%hack to reinitialize??? :S
-release(pointTracker);
-initialize(pointTracker,newKeypoints',img);
+% newKeypoints = [newKeypoints, strongestCornersCoord_i];
+% [~,inds,~] = unique(round(newKeypoints)', 'rows', 'stable');
+% newKeypoints = newKeypoints(:,inds);
+% 
+% %hack to reinitialize??? :S
+% release(pointTracker);
+% initialize(pointTracker,newKeypoints',img);
 
 %% return values
 pose = H_W1;
 state.tracker = pointTracker;
-state.keypoints = newKeypoints;
+state.keypoints = trackedEstablishedKeypoints; %should be newKeypoints when done...
 state.landmarks = P_landmarks_W;
 
 end
