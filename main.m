@@ -2,6 +2,7 @@
 local_setup;
 addpath('.\all_solns\00_camera_projection');
 addpath('.\all_solns\01_pnp');
+addpath('.\all_solns\02_detect_describe_match');
 addpath('.\all_solns\04_8point', '.\all_solns\04_8point\triangulation', '.\all_solns\04_8point\8point');
 addpath('.\all_solns\05_ransac');
 
@@ -47,7 +48,7 @@ end
 % need to set bootstrap_frames
 bootstrap_frames_KITTI = [1;3]; %1 and 3 seems fine for now!
 bootstrap_frames_Malaga = [1;3];
-bootstrap_frames_parking = [1;3];
+bootstrap_frames_parking  = [1;3];
 
 bootstrap_frames = bootstrap_frames_KITTI;
 
@@ -74,6 +75,7 @@ end
 
 [pose, state] = initializeVO(img0, img1, K, K, pose0,1000);
 last_frame = 10; %test length...
+bootstrap_frames(2) = 0; %test cont start
 figure(2);
 ax = gca;
 %% Continuous operation
@@ -101,6 +103,6 @@ for i = range
 %     quiver(pose(1,4),pose(2,4),pose(1,3),pose(2,3),'Color','b'); %camera0 z-axis in w  
    	drawnow;
     
-    
+    pause;
     prev_img = image;
 end

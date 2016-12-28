@@ -25,59 +25,72 @@ function [pose, state] = processFrame(img, K, H_W0, oldState)
 %           
 
 %% init
-numNewFeaturesToFind = 500;
+harris_patch_size = 9;
+harris_kappa = 0.08;
+num_keypoints = 500;
+nonmaximum_supression_radius = 8;
+descriptor_radius = 9;
+match_lambda = 4;
 
 P_landmarks_W = oldState.landmarks;
-numLandmarks = size(P_landmarks_W,2);
 
-establishedKeypoints = oldState.keypoints(:,1:numLandmarks);
-potensialKeypoints = oldState.keypoints(:,(numLandmarks+1):end);
+establishedKeypoints = oldState.establishedKeypoints;
+establishedDescriptors = oldState.establishedDescriptors;
 
-pointTracker = oldState.tracker;
-
-
+% potensialKeypoints = oldState.potensialKeypoints;
+% potensialDescriptors = oldState.potensialDescriptors;
 
 %% track points
-[trackedEstablishedKeypoints, point_validity] = step(pointTracker, img); % implements klt, change to other implementation
-trackedEstablishedKeypoints = trackedEstablishedKeypoints(1:numLandmarks,:)';
-validTrackedEstablishedKeypoints = trackedEstablishedKeypoints(:,point_validity(1:numLandmarks));
+harrisScore = harris(img, harris_patch_size, harris_kappa);
+newKeypoints = selectKeypoints(harrisScore, num_keypoints, nonmaximum_supression_radius);
+newDescriptors = describeKeypoints(img, newKeypoints, descriptor_radius);
+matches = matchDescriptors(establishedDescriptors, newDescriptors, match_lambda);
+[~, establishedInd, newInd] = find(matches);
+trackedEstablishedKeypoints = flipud(newKeypoints(:,newInd));
+trackedEstablishedDescriptors = newDescriptors(:,newInd);
 
-validEstablishedKeypoints = establishedKeypoints(:,point_validity(1:numLandmarks));
-%keypoints = keypoints(:,point_validity);
-%newKeypoints = trackedKeypoints(point_validity,:)';
+trackedLandmarks = P_landmarks_W(:, establishedInd);
+
+%validation plot
+figure(3);clf;
+imshow(img);
+hold on;
+scatter(establishedKeypoints(1,:), establishedKeypoints(2,:), 'yx','Linewidth',2');
+plot([establishedKeypoints(1,establishedInd); trackedEstablishedKeypoints(1,:)],[establishedKeypoints(2,establishedInd); trackedEstablishedKeypoints(2,:)],'g','Linewidth',1);
+title('tracked keypoints from last frame');
+hold on;
+scatter(trackedEstablishedKeypoints(1,:), trackedEstablishedKeypoints(2,:),'rx','Linewidth',2);
+
 
 %% Estimate relative pose
-%validEstablishedKeypointsHom = [validEstablishedKeypoints; ones(1, size(validEstablishedKeypoints,2))];
-%validTrackedEstablishedKeypointsHom = [validTrackedEstablishedKeypoints; ones(1, size(validTrackedEstablishedKeypoints,2))];
-trackedLandmarks = P_landmarks_W(:, point_validity(1:numLandmarks));
 
-[H_W1, inliers] = ransacLocalization(validTrackedEstablishedKeypoints, trackedLandmarks, K);
+[H_CW, inliers] = ransacLocalization(trackedEstablishedKeypoints, trackedLandmarks, K);
 fprintf('number of inliers found: %i\n',sum(inliers));
-% E = estimateEssentialMatrix(establishedKeypointsHom, trackedEstablishedKeypointsHom, K, K);
-% [R_10,u3] = decomposeEssentialMatrix(E);
-% [R_10, T_10] = disambiguateRelativePose(R_10, u3, establishedKeypointsHom, trackedEstablishedKeypointsHom, K, K);
+
+
+trackedEstablishedKeypoints = trackedEstablishedKeypoints(:,inliers);
+trackedEstablishedDescriptors = trackedEstablishedDescriptors(:,inliers);
+trackedLandmarks = trackedLandmarks(:,inliers);
+
+%M_C_W = estimatePoseDLT(trackedEstablishedKeypoints', trackedLandmarks(1:3,:)', K);
+
 
 %% compute homogenous transforms
-H_1W = H_W1\eye(4);         % frame World to 1
+H_WC = H_CW\eye(4);         % frame World to 1
 
 %% find new points to track
-corners_i = detectHarrisFeatures(img, 'MinQuality', 0.2); %tryout, change with homemade or soln, SIFT??
-strongestCorners_i = corners_i.selectStrongest(numNewFeaturesToFind);
-strongestCornersCoord_i= strongestCorners_i.Location';
+
 
 %% merge new points with existing points
-% newKeypoints = [newKeypoints, strongestCornersCoord_i];
-% [~,inds,~] = unique(round(newKeypoints)', 'rows', 'stable');
-% newKeypoints = newKeypoints(:,inds);
-% 
-% %hack to reinitialize??? :S
-% release(pointTracker);
-% initialize(pointTracker,newKeypoints',img);
 
 %% return values
-pose = H_W1;
-state.tracker = pointTracker;
-state.keypoints = trackedEstablishedKeypoints; %should be newKeypoints when done...
-state.landmarks = P_landmarks_W;
+pose = H_WC; 
+
+state.establishedKeypoints = trackedEstablishedKeypoints;
+state.establishedDescriptors = trackedEstablishedDescriptors;
+state.landmarks = trackedLandmarks;
+
+%potensialKeypoints = potensialKeypoints;
+%potensialDescriptors = potensialDescriptors;
 
 end
