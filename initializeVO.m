@@ -58,8 +58,11 @@ matches = matchDescriptors(descriptors0, descriptors1, match_lambda);
 
 % remove non matches
 [~, ind0, ind1] = find(matches);
+[~, ind0non, ind1non] = find(matches == 0);
 corners0 = corners0(:,ind0);
 descriptors0 = descriptors0(:,ind0);
+potentialKeypoints = corners1(:,ind1non);
+potentialDescriptors = descriptors1(:,ind1non);
 corners1 = corners1(:,ind1);
 descriptors1 = descriptors1(:,ind1);
 
@@ -112,6 +115,12 @@ axis equal;
 
 %% get landmarks in world coord
 P_landmark_W = linearTriangulation(corners0Hom, corners1Hom, K0*H_0W(1:3,:), K1*H_1W(1:3,:));
+P_landmark_1 = H_1W*P_landmark_W;
+posZInds = find(P_landmark_1(3,:) > 0);
+
+corners1 = corners1(:,posZInds);
+descriptors1 = descriptors1(:,posZInds);
+P_landmark_W = P_landmark_W(:,posZInds);
 
 %validation plot
 scatter(P_landmark_W(1,:),P_landmark_W(2,:),'.b');
@@ -121,8 +130,13 @@ axis equal;
 %% return values
 pose = H_W1;
 
+state.poses = H_W1(:);
 state.establishedKeypoints = corners1;
 state.establishedDescriptors = descriptors1;
 state.landmarks = P_landmark_W;
 
+state.potentialKeypoints = potentialKeypoints;
+state.potentialDescriptors = potentialDescriptors;
+state.potentialKeypointsFirst = potentialKeypoints;
+state.potentialPoseIndFirst = ones(1,size(potentialKeypoints,2));
 end

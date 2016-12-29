@@ -74,8 +74,8 @@ else
 end
 
 [pose, state] = initializeVO(img0, img1, K, K, pose0,1000);
-last_frame = 10; %test length...
-bootstrap_frames(2) = 0; %test cont start
+last_frame = 15; %test length...
+%bootstrap_frames(2) = 0; %test cont start
 figure(2);
 ax = gca;
 %% Continuous operation
@@ -98,11 +98,8 @@ for i = range
     [pose, state] = processFrame(image, K, pose, state);
     
     plotPoseXY(ax,pose);
-%     quiver(pose(1,4),pose(2,4),pose(1,1),pose(2,1),'Color','r'); %camera0 x-axis in w
-%     quiver(pose(1,4),pose(2,4),pose(1,2),pose(2,2),'Color','g'); %camera0 y-axis in w
-%     quiver(pose(1,4),pose(2,4),pose(1,3),pose(2,3),'Color','b'); %camera0 z-axis in w  
    	drawnow;
     
-    pause;
+    %pause;
     prev_img = image;
 end

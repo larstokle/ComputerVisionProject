@@ -149,7 +149,7 @@ end
 
 I_roi=I_warped;
 T_error=sum(I_error(:).^2)/numel(I_error);
-
+end
 
 
 function [Ix,Iy] = image_derivatives(I,sigma)
@@ -161,7 +161,7 @@ DGaussy=-(y./(2*pi*sigma^4)).*exp(-(x.^2+y.^2)/(2*sigma^2));
 % Filter the images to get the derivatives
 Ix = imfilter(I,DGaussx,'conv');
 Iy = imfilter(I,DGaussy,'conv');
-
+end
 
 
 function Iout = affine_transform_2d_double(Iin,x,y,M)
@@ -208,4 +208,5 @@ for i=1:size(Iin,3);
     intensity_xyz3=Iin_one(1+xBas1+yBas1*size(Iin,1));
     Iout_one=intensity_xyz0.*perc0+intensity_xyz1.*perc1+intensity_xyz2.*perc2+intensity_xyz3.*perc3;
     Iout(:,:,i)=reshape(Iout_one, [size(x,1) size(x,2)]);
+end
 end
