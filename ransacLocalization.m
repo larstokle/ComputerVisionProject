@@ -11,7 +11,7 @@ function [H_CW, inlier_mask] = ransacLocalization(...
 corresponding_landmarks = corresponding_landmarks(1:3,:);
 use_p3p = true;
 if use_p3p
-    num_iterations = 200;
+    num_iterations = 300;
     pixel_tolerance = 10;
     k = 3;
 else
@@ -91,7 +91,7 @@ end
 
 if max_num_inliers == 0
     H_CW = [];
-else
+elseif max_num_inliers >=6
     M_C_W = estimatePoseDLT(...
         matched_query_keypoints(:, inlier_mask>0)', ...
         corresponding_landmarks(:, inlier_mask>0)', K);

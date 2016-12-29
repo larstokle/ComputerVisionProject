@@ -116,7 +116,7 @@ axis equal;
 %% get landmarks in world coord
 P_landmark_W = linearTriangulation(corners0Hom, corners1Hom, K0*H_0W(1:3,:), K1*H_1W(1:3,:));
 P_landmark_1 = H_1W*P_landmark_W;
-posZInds = find(P_landmark_1(3,:) > 0);
+posZInds = find(P_landmark_1(3,:) > 0 & P_landmark_1(3,:) < 60);
 
 corners1 = corners1(:,posZInds);
 descriptors1 = descriptors1(:,posZInds);

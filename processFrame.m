@@ -30,13 +30,14 @@ harris_kappa = 0.08;
 num_keypoints = 500;
 nonmaximum_supression_radius = 8;
 descriptor_radius = 9;
-match_lambda = 4;
+match_lambda_est = 6;
+match_lambda_pot = 4;
 
-triangulationAngleThresh = 2*pi/180;
+triangulationAngleThresh = 0.375*pi/180;
 triangulationCosThresh = cos(triangulationAngleThresh);
 
 poses = oldState.poses;
-N = size(poses,2);
+N = size(poses,2) + 1;
 
 P_landmarks_W = oldState.landmarks;
 
@@ -53,8 +54,9 @@ harrisScore = harris(img, harris_patch_size, harris_kappa);
 newKeypoints = selectKeypoints(harrisScore, num_keypoints, nonmaximum_supression_radius);
 newDescriptors = describeKeypoints(img, newKeypoints, descriptor_radius);
 newKeypoints = flipud(newKeypoints);
+
 %% track established points
-matches = matchDescriptors(newDescriptors, establishedDescriptors, match_lambda);
+matches = matchDescriptors(newDescriptors, establishedDescriptors, match_lambda_est);
 [~, newInd, establishedInd] = find(matches);
 trackedEstablishedKeypoints = newKeypoints(:,newInd);
 trackedEstablishedDescriptors = newDescriptors(:,newInd);
@@ -71,7 +73,7 @@ figure(3);clf;
 imshow(img);
 hold on;
 scatter(establishedKeypoints(1,:), establishedKeypoints(2,:), 'yx','Linewidth',2');
-plot([establishedKeypoints(1,establishedInd); trackedEstablishedKeypoints(1,:)],[establishedKeypoints(2,establishedInd); trackedEstablishedKeypoints(2,:)],'g','Linewidth',1);
+plot([establishedKeypoints(1,establishedInd); trackedEstablishedKeypoints(1,:)],[establishedKeypoints(2,establishedInd); trackedEstablishedKeypoints(2,:)],'r','Linewidth',1);
 title('tracked established keypoints from last frame');
 hold on;
 scatter(trackedEstablishedKeypoints(1,:), trackedEstablishedKeypoints(2,:),'rx','Linewidth',2);
@@ -86,14 +88,15 @@ trackedEstablishedKeypoints = trackedEstablishedKeypoints(:,inliers);
 trackedEstablishedDescriptors = trackedEstablishedDescriptors(:,inliers);
 trackedLandmarks = trackedLandmarks(:,inliers);
 
-%M_C_W = estimatePoseDLT(trackedEstablishedKeypoints', trackedLandmarks(1:3,:)', K);
-
+%validate ransac
+figure(3);
+plot([establishedKeypoints(1,establishedInd(inliers)); trackedEstablishedKeypoints(1,:)],[establishedKeypoints(2,establishedInd(inliers)); trackedEstablishedKeypoints(2,:)],'g','Linewidth',1);
 
 %% compute homogenous transforms
 H_WC = H_CW\eye(4);         % frame World to 1
 
 %% track potential points
-matches = matchDescriptors(newDescriptors, potentialDescriptors, match_lambda);
+matches = matchDescriptors(newDescriptors, potentialDescriptors, match_lambda_pot);
 [~, newInd, potentialInd] = find(matches);
 trackedPotentialKeypoints = newKeypoints(:,newInd);
 trackedPotentialDescriptors = newDescriptors(:,newInd);
@@ -143,7 +146,7 @@ for i= 1:size(p1,2)
 end
 
 newLandmarks_C = H_CW*newLandmarks;
-posZInds = find(newLandmarks_C(3,:) > 0);
+posZInds = find(newLandmarks_C(3,:) > 0 & newLandmarks_C(3,:) < 60);
 newLandmarks = newLandmarks(:,posZInds);
 goodPotentialInds = goodPotentialInds(posZInds);
 
