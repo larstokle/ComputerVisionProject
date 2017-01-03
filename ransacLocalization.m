@@ -11,7 +11,7 @@ function [H_CW, inlier_mask] = ransacLocalization(...
 corresponding_landmarks = corresponding_landmarks(1:3,:);
 use_p3p = true;
 if use_p3p
-    num_iterations = 300;
+    num_iterations = 200;
     pixel_tolerance = 10;
     k = 3;
 else

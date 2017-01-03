@@ -1,6 +1,6 @@
 clear all;
 
-addpath('../../00_camera_projection/code');
+addpath('../../00_camera_projection');
 
 hidden_state = load('../data/hidden_state.txt');
 observations = load('../data/observations.txt');

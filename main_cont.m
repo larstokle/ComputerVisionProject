@@ -1,6 +1,12 @@
 %% Setup
 local_setup;
+addpath('.\all_solns\00_camera_projection');
+addpath('.\all_solns\01_pnp');
+addpath('.\all_solns\02_detect_describe_match');
 addpath('.\all_solns\04_8point', '.\all_solns\04_8point\triangulation', '.\all_solns\04_8point\8point');
+addpath('.\all_solns\05_ransac');
+addpath('.\all_solns\07_LK_Tracker');
+
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 pose0 =[0, 0, 1, -0.2343818;
@@ -68,34 +74,17 @@ else
     assert(false);
 end
 
-% kitti data from ex6
-keypoints = load('./other_data/keypoints.txt')';
-p_W_landmarks = load('./other_data/p_W_landmarks.txt')';
-
-img0 = imread([kitti_path, '/00/image_0/', sprintf('%06d.png',0)]);
-pointTracker = vision.PointTracker('BlockSize', [15,15]);
-initialize(pointTracker, keypoints', img0);
-
-state.tracker = pointTracker;
-state.keypoints = keypoints;
-state.landmarks = p_W_landmarks;
-
-pose = pose0;
-
-figure(1),clf;
-hold on;
-quiver(pose(1,4),pose(2,4),pose(1,1),pose(2,1),'Color','r'); %camera0 x-axis in w
-quiver(pose(1,4),pose(2,4),pose(1,2),pose(2,2),'Color','g'); %camera0 y-axis in w
-quiver(pose(1,4),pose(2,4),pose(1,3),pose(2,3),'Color','b'); %camera0 z-axis in w
-
-scatter(p_W_landmarks(1,:),p_W_landmarks(2,:),'.b');
-axis equal;
+[pose, state] = initializeVO_test(kitti_path,K);
 
 bootstrap_frames(2) = 0;
-last_frame = 50;
+last_frame = 150;
+figure(2);
+ax = gca;
+
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
 for i = range
+    tic
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
     if ds == 0
         image = imread([kitti_path '/00/image_0/' sprintf('%06d.png',i)]);
@@ -112,10 +101,10 @@ for i = range
     
     [pose, state] = processFrame(image, K, pose, state);
     
-    quiver(pose(1,4),pose(2,4),pose(1,1),pose(2,1),'Color','r'); %camera0 x-axis in w
-    quiver(pose(1,4),pose(2,4),pose(1,2),pose(2,2),'Color','g'); %camera0 y-axis in w
-    quiver(pose(1,4),pose(2,4),pose(1,3),pose(2,3),'Color','b'); %camera0 z-axis in w  
+    plotPoseXY(ax,pose);
    	drawnow;
     
+    toc
+    %pause;
     prev_img = image;
 end

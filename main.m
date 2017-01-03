@@ -5,18 +5,21 @@ addpath('.\all_solns\01_pnp');
 addpath('.\all_solns\02_detect_describe_match');
 addpath('.\all_solns\04_8point', '.\all_solns\04_8point\triangulation', '.\all_solns\04_8point\8point');
 addpath('.\all_solns\05_ransac');
+addpath('.\all_solns\07_LK_Tracker');
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
-pose0 =[0, 0, 1, 0;
-        -1, 0, 0, 0;
-        0, -1, 0, 0;
-        0, 0, 0, 1];
+% pose0 =[0, 0, 1, 0;
+%         -1, 0, 0, 0;
+%         0, -1, 0, 0;
+%         0, 0, 0, 1];
 
 if ds == 0
     % need to set kitti_path to folder containing "00" and "poses"
     assert(exist('kitti_path', 'var') ~= 0);
     ground_truth = load([kitti_path '/poses/00.txt']);
+    pose0 = [reshape(ground_truth(1,:)',4,3)';
+            0, 0, 0, 1];
     ground_truth = ground_truth(:, [end-8 end]);
     last_frame = 4540;
     K = [7.188560000000e+02 0 6.071928000000e+02
@@ -100,6 +103,6 @@ for i = range
     plotPoseXY(ax,pose);
    	drawnow;
     
-    %pause;
+    pause;
     prev_img = image;
 end

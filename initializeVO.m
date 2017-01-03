@@ -123,14 +123,16 @@ descriptors1 = descriptors1(:,posZInds);
 P_landmark_W = P_landmark_W(:,posZInds);
 
 %validation plot
-scatter(P_landmark_W(1,:),P_landmark_W(2,:),'.b');
+scatter(P_landmark_W(3,:),-P_landmark_W(1,:),'.b');
+xlabel('z-axis');
+ylabel('- x-axis');
 axis equal;
 
 
 %% return values
 pose = H_W1;
 
-state.poses = H_W1(:);
+state.poses = [H_W0(:), H_W1(:)];
 state.establishedKeypoints = corners1;
 state.establishedDescriptors = descriptors1;
 state.landmarks = P_landmark_W;
@@ -138,5 +140,5 @@ state.landmarks = P_landmark_W;
 state.potentialKeypoints = potentialKeypoints;
 state.potentialDescriptors = potentialDescriptors;
 state.potentialKeypointsFirst = potentialKeypoints;
-state.potentialPoseIndFirst = ones(1,size(potentialKeypoints,2));
+state.potentialPoseIndFirst = 2*ones(1,size(potentialKeypoints,2));
 end
