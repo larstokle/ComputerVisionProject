@@ -1,6 +1,6 @@
 %% Setup
 local_setup;
-addpath('continous_dependencies/');
+addpath('continuous_dependencies/');
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 pose0 =[0, 0, 1, -0.2343818;
@@ -77,9 +77,10 @@ ax = gca;
 
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
+figure(2);figure(3);figure(4);
+
 for i = range
     
-    figure(2);figure(3);figure(4);
     
     tic
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
