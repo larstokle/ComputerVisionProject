@@ -1,6 +1,6 @@
 %% Setup
 local_setup;
-addpath('continous_dependencies/');
+addpath('continuous_dependencies/');
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
