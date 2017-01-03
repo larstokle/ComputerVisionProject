@@ -1,6 +1,6 @@
 %% Setup
 local_setup;
-addpath('.\all_solns\04_8point', '.\all_solns\04_8point\triangulation', '.\all_solns\04_8point\8point');
+%addpath('.\all_solns\04_8point', '.\all_solns\04_8point\triangulation', '.\all_solns\04_8point\8point');
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 

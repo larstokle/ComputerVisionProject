@@ -1,20 +1,12 @@
 %% Setup
 local_setup;
-addpath('.\all_solns\00_camera_projection');
-addpath('.\all_solns\01_pnp');
-addpath('.\all_solns\02_detect_describe_match');
-addpath('.\all_solns\04_8point', '.\all_solns\04_8point\triangulation', '.\all_solns\04_8point\8point');
-addpath('.\all_solns\05_ransac');
-addpath('.\all_solns\07_LK_Tracker');
+addpath('continous_dependencies/');
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
-% pose0 =[0, 0, 1, 0;
-%         -1, 0, 0, 0;
-%         0, -1, 0, 0;
-%         0, 0, 0, 1];
-
 if ds == 0
+    bootstrap_frames = [1 3];
+    
     % need to set kitti_path to folder containing "00" and "poses"
     assert(exist('kitti_path', 'var') ~= 0);
     ground_truth = load([kitti_path '/poses/00.txt']);
@@ -48,18 +40,15 @@ else
 end
 
 %% Bootstrap
-% need to set bootstrap_frames
-bootstrap_frames_KITTI = [1;3]; %1 and 3 seems fine for now!
-bootstrap_frames_Malaga = [1;3];
-bootstrap_frames_parking  = [1;3];
-
-bootstrap_frames = bootstrap_frames_KITTI;
-
 if ds == 0
     img0 = imread([kitti_path '/00/image_0/' ...
         sprintf('%06d.png',bootstrap_frames(1))]);
     img1 = imread([kitti_path '/00/image_0/' ...
         sprintf('%06d.png',bootstrap_frames(2))]);
+    
+    disp('Start kitti init');
+    [pose, state] = init(img0,img1,K);
+    disp('Kitti init finished');
 elseif ds == 1
     img0 = rgb2gray(imread([malaga_path ...
         '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
@@ -76,9 +65,6 @@ else
     assert(false);
 end
 
-[pose, state] = initializeVO(img0, img1, K, K, pose0,1000);
-last_frame = 15; %test length...
-%bootstrap_frames(2) = 0; %test cont start
 figure(2);
 ax = gca;
 %% Continuous operation
@@ -98,11 +84,14 @@ for i = range
         assert(false);
     end
     
+    figure(2);figure(3);figure(4);
+    
+    tic;
     [pose, state] = processFrame(image, K, pose, state);
+    toc;
     
     plotPoseXY(ax,pose);
    	drawnow;
     
-    pause;
     prev_img = image;
 end

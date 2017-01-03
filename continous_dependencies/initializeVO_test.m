@@ -1,5 +1,6 @@
 function [pose, state] = initializeVO_test(kitti_path,K)
 
+addpath('continous_dependencies/all_solns/02_detect_describe_match');
 
 %% Init
 harris_patch_size = 9;

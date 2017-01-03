@@ -1,12 +1,6 @@
 %% Setup
 local_setup;
-addpath('.\all_solns\00_camera_projection');
-addpath('.\all_solns\01_pnp');
-addpath('.\all_solns\02_detect_describe_match');
-addpath('.\all_solns\04_8point', '.\all_solns\04_8point\triangulation', '.\all_solns\04_8point\8point');
-addpath('.\all_solns\05_ransac');
-addpath('.\all_solns\07_LK_Tracker');
-
+addpath('continous_dependencies/');
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 pose0 =[0, 0, 1, -0.2343818;
@@ -84,6 +78,9 @@ ax = gca;
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
 for i = range
+    
+    figure(2);figure(3);figure(4);
+    
     tic
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
     if ds == 0

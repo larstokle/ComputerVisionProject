@@ -24,6 +24,15 @@ function [pose, state] = processFrame(img, K, H_W0, oldState)
 %       state:  updated input struct
 %           
 
+%% Dependencies
+addpath('continous_dependencies/all_solns/00_camera_projection');
+addpath('continous_dependencies/all_solns/01_pnp');
+addpath('continous_dependencies/all_solns/02_detect_describe_match');
+addpath('continous_dependencies/all_solns/04_8point', 'continous_dependencies/all_solns/04_8point/triangulation', 'continous_dependencies/all_solns/04_8point/8point');
+addpath('continous_dependencies/all_solns/05_ransac');
+addpath('continous_dependencies/all_solns/07_LK_Tracker');
+addpath('continous_dependencies/');
+
 %% init
 % tuning parameters
 harris_patch_size = 9;
