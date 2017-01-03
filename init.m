@@ -8,7 +8,7 @@ function [T,S] = init(img0,img1,K)
     addpath('init_dependencies/harris/');
     addpath('init_dependencies/bundle_adjustment/');
     
-    debug = false;
+    debug = true;
     bundle_adjust = true;
     reprojection_error_tolerance = 10; %px
     corner_distance_limit = 300; %px
@@ -65,9 +65,9 @@ function [T,S] = init(img0,img1,K)
         
     iteration = 1;
     
-    e = reprojection_error_tolerance + 1; % Dummy value first iteration
+    has_error = true;
     
-    while max(e) > reprojection_error_tolerance
+    while has_error
         p0 = p0(:,inlier_mask);
         p1 = p1(:,inlier_mask);
         descriptors1 = descriptors1(:,inlier_mask);
@@ -79,10 +79,7 @@ function [T,S] = init(img0,img1,K)
         [E,inlier_mask] = estimateEssentialMatrix_RANSAC(p0, p1, K, K,[]);
 
         disp('Essential matrix estimate finished')
-        
-        if debug
-            disp(['RANSAC result -- Iteration: ' num2str(iteration) ' Num points: ' num2str(size(p0,2)) ' Num inliers:' num2str(nnz(inlier_mask)) ]);
-        end
+        disp(['RANSAC result -- Iteration: ' num2str(iteration) ' Num points: ' num2str(size(p0,2)) ' Num inliers:' num2str(nnz(inlier_mask)) ]);
 
         %% Extract the relative camera positions (R,T) from the essential matrix
         p0 = p0(:,inlier_mask);
@@ -108,6 +105,12 @@ function [T,S] = init(img0,img1,K)
         err2 = calculateReprojectionError(P,p1,M1);
         e = err1 + err2;
         inlier_mask = (e < reprojection_error_tolerance);
+        positive_z_mask = (P(3,:) > 0);
+        inlier_mask = inlier_mask & positive_z_mask;
+        
+        if nnz(inlier_mask) == numel(inlier_mask)
+            has_error = false;
+        end
         
         if nnz(inlier_mask) < 8
             disp('WARNING: Number of inliers below 8 in init. Aborting.');
@@ -126,9 +129,10 @@ function [T,S] = init(img0,img1,K)
         
     % Debug prior to BA
     if debug
-        plotReprojection(P,M0,p0,K,img0);
+        idx = P(3,:) >= 0;
+        plotReprojection(P(:,idx),M0,p0(:,idx),K,img0);
         title('Reprojection frame 0 before BA')
-        plotReprojection(P,M1,p1,K,img1);
+        plotReprojection(P(:,idx),M1,p1(:,idx),K,img1);
         title('Reprojection frame 1 before BA');
         pause(0.01);
     end
@@ -152,6 +156,7 @@ function [T,S] = init(img0,img1,K)
        H1 = H1^-1;
               
        % Make world frame equal to frame 0
+       P_old = P; % For debugging
        P = H0*P; %Now        
        H1 = H1*H0^-1; % This is World to C1 now
        
@@ -160,9 +165,10 @@ function [T,S] = init(img0,img1,K)
            t1 = H1(1:3,4);
            M0 = K * eye(3,4);
            M1 = K * [R1,t1];
-           plotReprojection(P,M0,p0,K,img0);
+           idx = P(3,:) >= 0;
+           plotReprojection(P(:,idx),M0,p0(:,idx),K,img0);
            title('Reprojection frame 0 after BA')
-           plotReprojection(P,M1,p1,K,img1);
+           plotReprojection(P(:,idx),M1,p1(:,idx),K,img1);
            title('Reprojection frame 1 after BA')
        end
        
