@@ -190,12 +190,14 @@ function [T,S] = init(img0,img1,K)
            disp(['Reprojection error after BA: ' num2str(sum(e))])           
        end
        
+       H1 = H1^-1; % Convert from World->C1 into C1->World
+       
     end
     
     %% Set return values
     
     % Pose of last frame. Transformation from camera to world coordinates
-    T = H1^-1;
+    T = H1; % Still from C1 to world
     
     assert(size(P(:,1),1)==4,'P should be a 4-vector')
     

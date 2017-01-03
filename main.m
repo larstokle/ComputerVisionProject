@@ -67,6 +67,8 @@ end
 
 figure(2);
 ax = gca;
+
+figure(2);figure(3);figure(4);
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
 for i = range
@@ -83,8 +85,6 @@ for i = range
     else
         assert(false);
     end
-    
-    figure(2);figure(3);figure(4);
     
     tic;
     [pose, state] = processFrame(image, K, pose, state);
