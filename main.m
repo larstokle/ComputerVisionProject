@@ -79,6 +79,7 @@ end
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
 figure(2); ax2 = gca;
+hold(ax2,'on');
 figure(3); ax3 = gca;
 figure(4); ax4 = gca;
 

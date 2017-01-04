@@ -144,10 +144,10 @@ matches = matchDescriptorsEpiPolar(potentialDescriptors, newDescriptors, potenti
 [~, potentialInd, newInd] = find(matches);
 trackedPotentialKeypoints = newKeypoints(:,newInd);
 trackedPotentialDescriptors = newDescriptors(:,newInd);
-N_pot_tracked = size(trackedPotentialKeypoints,2):
+N_pot_tracked = size(trackedPotentialKeypoints,2);
 
 %remove tracked potential points from new
-[~, potentialIndNon, newIndNon] = find(matches == 0);
+[~, newIndNon] = setdiff(newKeypoints',trackedPotentialKeypoints','rows');
 newKeypoints = newKeypoints(:,newIndNon);
 newDescriptors = newDescriptors(:,newIndNon);
 
@@ -224,7 +224,7 @@ scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', potAx);
 
 %set(0,'CurrentFigure',2);
 scatter(newLandmarks(3,:), -newLandmarks(1,:),'.r', 'Parent', mapAx);
-title(['tracked potential keypoints from last frame, #tracked = ',num2str(size(trackedPotentialKeypoints,2)), ', #triangulated = ', num2str(size(newLandmarks,2))],'Parent',potAx);
+title(['tracked potential keypoints from last frame, #tracked = ',num2str(N_pot_tracked), ', #triangulated = ', num2str(size(newLandmarks,2))],'Parent',potAx);
 axis(mapAx,'equal');
 
 %% return values
