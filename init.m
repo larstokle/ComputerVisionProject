@@ -223,7 +223,7 @@ function [T,S] = init(img0,img1,K)
     state.potentialDescriptors = potential_descriptors;
     state.potentialBearingFirst = potentialBearing; % TODO: Test this
     state.potentialKeypointsFirst = potential_keypoints;
-    state.potentialPoseIndFirst = ones(1,size(potential_keypoints,2));
+    state.potentialPoseIndFirst = 2*ones(1,size(potential_keypoints,2));
     
     S = state;
     
