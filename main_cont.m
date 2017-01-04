@@ -72,15 +72,12 @@ end
 
 bootstrap_frames(2) = 0;
 last_frame = 150;
-figure(2);
-ax = gca;
-figure(3);
-figure(4);
-figure(2);
 
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
-figure(2);figure(3);figure(4);
+figure(2); ax2 = gca;
+figure(3); ax3 = gca;
+figure(4); ax4 = gca;
 
 for i = range
     
@@ -102,7 +99,7 @@ for i = range
     
     [pose, state] = processFrame(image, K, pose, state);
     
-    plotPoseXY(ax,pose);
+    plotPoseXY(ax2,pose);
    	drawnow;
     
     toc
