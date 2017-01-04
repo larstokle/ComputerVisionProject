@@ -74,6 +74,9 @@ bootstrap_frames(2) = 0;
 last_frame = 150;
 figure(2);
 ax = gca;
+figure(3);
+figure(4);
+figure(2);
 
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
@@ -103,6 +106,6 @@ for i = range
    	drawnow;
     
     toc
-    %pause;
+    pause;
     prev_img = image;
 end

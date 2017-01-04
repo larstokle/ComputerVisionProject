@@ -67,6 +67,6 @@ state.potentialKeypoints = potentialKeypoints;
 state.potentialDescriptors = potentialDescriptors;
 state.potentialBearingFirst = potentialBearing;
 state.potentialKeypointsFirst = potentialKeypoints; % can be removed if not used for plotting
-state.potentialPoseIndFirst = ones(1,size(potentialKeypoints,2));
+state.potentialPoseIndFirst = 2*ones(1,size(potentialKeypoints,2));
 
 end
