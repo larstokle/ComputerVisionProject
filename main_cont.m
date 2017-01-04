@@ -103,6 +103,6 @@ for i = range
    	drawnow;
     
     toc
-    pause;
+    %pause;
     prev_img = image;
 end

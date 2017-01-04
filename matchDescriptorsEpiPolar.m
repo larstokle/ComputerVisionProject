@@ -1,5 +1,5 @@
 function matches = matchDescriptorsEpiPolar(...
-    query_descriptors, database_descriptors, query_keypoints, database_keypoints, lambda, relativePose, K, max_epipole_angle_error, max_dist)
+    descriptors1, descriptors2, keypoints1, keypoints2, lambda, H_12, K, max_epipole_line_dist, max_dist)
 % Returns a 1xQ matrix where the i-th coefficient is the index of the
 % database descriptor which matches to the i-th query descriptor.
 % The descriptor vectors are MxQ and MxD where M is the descriptor
@@ -12,25 +12,27 @@ if max_dist == 0
     max_dist = inf;
 end
 
-if max_epipole_angle_error == 0
-    max_epipole_angle_error = inf;
+if max_epipole_line_dist == 0
+    max_epipole_line_dist = inf;
 end
 
-T = relativePose(1:3,4);
-R = relativePose(1:3,1:3);
+T_12 = H_12(1:3,4);
+R_12 = H_12(1:3,1:3);
+normCoord2pix = K(1,1);
 
-database_keypoints_norm = K\[database_keypoints; ones(1, size(database_keypoints, 2))];
-query_keypoints_norm = K\[query_keypoints; ones(1, size(query_keypoints, 2))];
+keypoints2_norm = K\[keypoints2; ones(1, size(keypoints2, 2))];
+keypoints1_norm = K\[keypoints1; ones(1, size(keypoints1, 2))];
 
-epiPolarNormals = R*cross2matrix(T)*database_keypoints_norm;
-epiPolarNormals = epiPolarNormals./(ones(3,1)*sqrt(sum(epiPolarNormals,1)));
+E = cross2matrix(T_12)*R_12;
+epiPolarNormals = E'*keypoints1_norm;
+epiPolarNormals = epiPolarNormals./(ones(3,1)*sqrt(sum(epiPolarNormals.^2,1)));
 
-epiPolarDists = abs(epiPolarNormals'*(query_keypoints_norm./(ones(3,1)*sqrt(sum(query_keypoints_norm,1)))));
+epiPolarDists = normCoord2pix*abs(keypoints2_norm'*epiPolarNormals);
 
 
-keypointDist = pdist2(double(database_keypoints)', double(query_keypoints)','euclidean');
-descriptorDist = pdist2(double(database_descriptors)', double(query_descriptors)', 'euclidean');
-descriptorDist(keypointDist > max_dist | epiPolarDists < sin(max_epipole_angle_error)) = inf;
+keypointDist = pdist2(double(keypoints2)', double(keypoints1)','euclidean');
+descriptorDist = pdist2(double(descriptors2)', double(descriptors1)', 'euclidean');
+descriptorDist(keypointDist > max_dist | epiPolarDists > max_epipole_line_dist) = inf;
 
 [minDescDist, matches] = min(descriptorDist,[],1);
 matches(minDescDist > min(minDescDist)*lambda) = 0;

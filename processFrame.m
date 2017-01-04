@@ -45,14 +45,14 @@ num_keypoints = 1500;
 nonmaximum_supression_radius = 8;
 descriptor_radius = 9;
 match_lambda_est = 6;
-match_lambda_pot = 15;
+match_lambda_pot = 8;
 KLT_match = 0.001; %fraction of maximum patch distance
 
 triangulationAngleThresh = 1*pi/180;
 triangulationCosThresh = cos(triangulationAngleThresh);
 
-max_epipole_angle_error = 5*pi/180;
-max_match_dist = 300;
+max_epipole_line_dist = 2.5;
+max_match_dist = 100;
 %extract variables from state
 poses = oldState.poses;
 N_frames = size(poses,2) + 1;
@@ -119,7 +119,6 @@ trackedEstablishedDescriptorsTransform = trackedEstablishedDescriptorsTransform(
 trackedLandmarks = trackedLandmarks(:,inliers);
 
 %validate ransac
-%set(0,'CurrentFigure',3);
 plot([establishedKeypoints(1,inliers); trackedEstablishedKeypoints(1,:)],[establishedKeypoints(2,inliers); trackedEstablishedKeypoints(2,:)],'g','Linewidth',1,'Parent',estAx);
 
 %% compute homogenous transforms
@@ -133,21 +132,22 @@ newDescriptors = describeKeypoints(img, newKeypoints, descriptor_radius);
 newKeypoints = flipud(newKeypoints);
 
 [~, isNew] = setdiff(...
-            newKeypoints'/nonmaximum_supression_radius,...
-            trackedEstablishedKeypoints'/nonmaximum_supression_radius,...
+            round(newKeypoints'/nonmaximum_supression_radius),...
+            round(trackedEstablishedKeypoints'/nonmaximum_supression_radius),...
             'rows');
 newKeypoints = newKeypoints(:,isNew);
 newDescriptors = newDescriptors(:,isNew);
 
 %% track potential points
-matches = matchDescriptorsEpiPolar(newDescriptors, potentialDescriptors, newKeypoints, potentialKeypoints, match_lambda_pot, H_last_C, K, max_epipole_angle_error, max_match_dist);
+matches = matchDescriptorsEpiPolar(potentialDescriptors, newDescriptors, potentialKeypoints, newKeypoints, match_lambda_pot, H_last_C, K, max_epipole_line_dist, max_match_dist);
 
-[~, newInd, potentialInd] = find(matches);
+[~, potentialInd, newInd] = find(matches);
 trackedPotentialKeypoints = newKeypoints(:,newInd);
 trackedPotentialDescriptors = newDescriptors(:,newInd);
+N_pot_tracked = size(trackedPotentialKeypoints,2):
 
 %remove tracked potential points from new
-[~, newIndNon, potentialIndNon] = find(matches == 0);
+[~, potentialIndNon, newIndNon] = find(matches == 0);
 newKeypoints = newKeypoints(:,newIndNon);
 newDescriptors = newDescriptors(:,newIndNon);
 
@@ -162,7 +162,6 @@ imshow(img,'Parent',potAx);
 hold(potAx,'on');
 scatter(potentialKeypointsFirst(1,:), potentialKeypointsFirst(2,:), 'yx','Linewidth',2,'Parent',potAx);
 plot([potentialKeypointsFirst(1,potentialInd); trackedPotentialKeypoints(1,:)],[potentialKeypointsFirst(2,potentialInd); trackedPotentialKeypoints(2,:)],'g','Linewidth',1, 'Parent',potAx);
-title(['tracked potential keypoints from last frame, #tracked = ',num2str(size(trackedPotentialKeypoints,2))],'Parent',potAx);
 scatter(trackedPotentialKeypoints(1,:), trackedPotentialKeypoints(2,:),'rx','Linewidth',2, 'Parent',potAx);
 
 % remove nontracked points after ploting
@@ -225,6 +224,7 @@ scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', potAx);
 
 %set(0,'CurrentFigure',2);
 scatter(newLandmarks(3,:), -newLandmarks(1,:),'.r', 'Parent', mapAx);
+title(['tracked potential keypoints from last frame, #tracked = ',num2str(size(trackedPotentialKeypoints,2)), ', #triangulated = ', num2str(size(newLandmarks,2))],'Parent',potAx);
 axis(mapAx,'equal');
 
 %% return values
