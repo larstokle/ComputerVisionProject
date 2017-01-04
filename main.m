@@ -1,6 +1,7 @@
 %% Setup
 local_setup;
 addpath('continuous_dependencies/');
+use_saved_bootstrap = false;
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
@@ -41,14 +42,23 @@ end
 
 %% Bootstrap
 if ds == 0
-    img0 = imread([kitti_path '/00/image_0/' ...
-        sprintf('%06d.png',bootstrap_frames(1))]);
-    img1 = imread([kitti_path '/00/image_0/' ...
-        sprintf('%06d.png',bootstrap_frames(2))]);
+    if use_saved_bootstrap
+        load('other_data/bootstrap_kitti_pose');
+        load('other_data/bootstrap_kitti_state');
+    else
+        img0 = imread([kitti_path '/00/image_0/' ...
+            sprintf('%06d.png',bootstrap_frames(1))]);
+        img1 = imread([kitti_path '/00/image_0/' ...
+            sprintf('%06d.png',bootstrap_frames(2))]);
+
+        disp('Start kitti init');
+        [pose, state] = init(img0,img1,K);
+        disp('Kitti init finished');
+
+        save('other_data/bootstrap_kitti_pose','pose');
+        save('other_data/bootstrap_kitti_state','state');        
+     end
     
-    disp('Start kitti init');
-    [pose, state] = init(img0,img1,K);
-    disp('Kitti init finished');
 elseif ds == 1
     img0 = rgb2gray(imread([malaga_path ...
         '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
