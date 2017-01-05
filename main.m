@@ -1,7 +1,7 @@
 %% Setup
 local_setup;
 addpath('continuous_dependencies/');
-use_saved_bootstrap = false;
+use_saved_bootstrap = true;
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
@@ -99,7 +99,8 @@ for i = range
     end
     
     tic;
-    [pose, state] = processFrame(image, K, pose, state);
+    [pose, state] = processFrame2(image, K, pose, state);
+    %state = tracker(image,state);
     toc;
     
     plotPoseXY(ax2,pose);
