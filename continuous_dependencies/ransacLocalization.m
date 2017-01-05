@@ -1,5 +1,5 @@
 function [H_CW, inlier_mask] = ransacLocalization(...
-    matched_query_keypoints, corresponding_landmarks, K)
+    matched_query_keypoints, corresponding_landmarks, K, pixel_tolerance)
 % query_keypoints should be 2x1000
 % all_matches should be 1x1000 and correspond to the output from the
 %   matchDescriptors() function from exercise 3.
@@ -12,11 +12,11 @@ corresponding_landmarks = corresponding_landmarks(1:3,:);
 use_p3p = true;
 if use_p3p
     num_iterations = 200;
-    pixel_tolerance = 10;
+    %pixel_tolerance = 10;
     k = 3;
 else
     num_iterations = 2000;
-    pixel_tolerance = 10;
+    %pixel_tolerance = 10;
     k = 6;
 end
 

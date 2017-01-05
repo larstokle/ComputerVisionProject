@@ -1,7 +1,12 @@
 function matches = matchDescriptorsEpiPolar(...
-    descriptors1, descriptors2, keypoints1, keypoints2, lambda, H_12, K, max_epipole_line_dist, max_dist)
+    descriptors1, descriptors2, keypoints1, keypoints2,...
+    lambda, H_12, K, max_epipole_line_dist, max_dist)
+%% matches = matchDescriptorsEpiPolar(...
+%    descriptors1, descriptors2, keypoints1, keypoints2,...
+%    lambda, H_12, K, max_epipole_line_dist, max_dist)
+%
 % Returns a 1xQ matrix where the i-th coefficient is the index of the
-% database descriptor which matches to the i-th query descriptor.
+% descriptor1 which matches to the i-th descriptor2.
 % The descriptor vectors are MxQ and MxD where M is the descriptor
 % dimension and Q and D the amount of query and database descriptors
 % respectively. matches(i) will be zero if there is no database descriptor
@@ -45,10 +50,11 @@ if max_epipole_line_dist ~= 0
 end
 
 descriptorDist = pdist2(double(descriptors2)', double(descriptors1)', 'euclidean');
+minDescDist = min(descriptorDist(:));
 descriptorDist(nonvalid) = inf;
 
-[minDescDist, matches] = min(descriptorDist,[],1);
-matches(minDescDist > min(minDescDist)*lambda) = 0;
+[minValidDescDist, matches] = min(descriptorDist,[],1);
+matches(minValidDescDist > minDescDist*lambda) = 0;
 
 unique_matches = zeros(size(matches));
 [~,unique_match_idxs,~] = unique(matches, 'stable');
@@ -57,11 +63,7 @@ unique_matches(unique_match_idxs) = matches(unique_match_idxs);
 matches = unique_matches;
 end
 
-function M = cross2matrix(x)
-    M =[0       ,-x(3)  ,x(2)   ; 
-        x(3)    ,0      ,-x(1)  ;
-        -x(2)   ,x(1)   ,0      ];
-end
+
 
 %testing
 function test()
