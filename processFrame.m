@@ -48,13 +48,13 @@ descriptor_radius = 9;
 %tuning parameters established landmarks and pose estimation
 use_KLT = true;
 KLT_match = 0.001; %fraction of maximum patch distance
-match_lambda_est = 10;
-pixel_motion_err_tol = 50;
+match_lambda_est = 12;
+pixel_motion_err_tol = 75;
 reprojection_pix_tol = 10;
 
 %tuning parameters potential landmarks
-match_lambda_pot = 6;
-max_epipole_line_dist = 10;
+match_lambda_pot = 7;
+max_epipole_line_dist = 15;
 max_match_dist = 150;
 triangulationAngleThresh = 2*pi/180;
 triangulationCosThresh = cos(triangulationAngleThresh);

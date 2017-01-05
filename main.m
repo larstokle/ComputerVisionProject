@@ -6,12 +6,12 @@ figure(5); clf; ax5 = gca; hold(ax5,'on');
 
 local_setup;
 addpath('continuous_dependencies/');
-use_saved_bootstrap = true;
+use_saved_bootstrap = false;
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
 if ds == 0
-    bootstrap_frames = [1 3];
+    bootstrap_frames = [80 82];
     
     % need to set kitti_path to folder containing "00" and "poses"
     assert(exist('kitti_path', 'var') ~= 0);
@@ -106,7 +106,7 @@ for i = range
     plotPoseXY(ax2,pose);
     plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
    	drawnow;
-    
+    pause;
     prev_img = image;
 end
 

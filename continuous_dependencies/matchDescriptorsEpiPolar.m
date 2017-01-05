@@ -17,7 +17,7 @@ nonvalid = false(size(keypoints2,2),size(keypoints1,2));
 
 if max_dist ~= 0
     keypointDist = pdist2(double(keypoints2)', double(keypoints1)','euclidean');
-    nonvalid = nonvalid | keypointDist > max_dist;
+    nonvalid = nonvalid | (keypointDist > max_dist);
 end
 
 if max_epipole_line_dist ~= 0
