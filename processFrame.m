@@ -45,14 +45,14 @@ num_keypoints = 1500;
 nonmaximum_supression_radius = 8;
 descriptor_radius = 9;
 match_lambda_est = 6;
-match_lambda_pot = 8;
+match_lambda_pot = 6;
 KLT_match = 0.001; %fraction of maximum patch distance
 
 triangulationAngleThresh = 1*pi/180;
 triangulationCosThresh = cos(triangulationAngleThresh);
 
-max_epipole_line_dist = 2.5;
-max_match_dist = 100;
+max_epipole_line_dist = 10;
+max_match_dist = 150;
 %extract variables from state
 poses = oldState.poses;
 N_frames = size(poses,2) + 1;
@@ -110,7 +110,7 @@ establishedKeypoints = establishedKeypoints_KLT; %done here so that the old esta
 %% Estimate relative pose
 
 [H_CW, inliers] = ransacLocalization(trackedEstablishedKeypoints, trackedLandmarks, K);
-fprintf('number of inliers found: %i\n',sum(inliers));
+fprintf('RANSAC: #inliers: %i, #outliers: %i\n',sum(inliers),sum(inliers==0));
 
 trackedEstablishedKeypoints = trackedEstablishedKeypoints(:,inliers);
 trackedEstablishedDescriptors = trackedEstablishedDescriptors(:,inliers); %using old descriptors
