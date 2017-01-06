@@ -67,24 +67,24 @@ N_frames = size(poses,2) + 1;
 
 P_landmarks_W = oldState.landmarks;
 
-establishedKeypoints = oldState.landmark_keypoints;
-establishedDescriptors = oldState.landmark_descriptors;
-establishedDescriptorsTransform = oldState.landmark_transforms;
-N_established = size(establishedKeypoints,2);
-patch_radius = sqrt(size(establishedDescriptors,1));
+landmark_keypoints = oldState.landmark_keypoints;
+landmark_descriptors = oldState.landmark_descriptors;
+landmark_transforms = oldState.landmark_transforms;
+N_landmarks = size(landmark_keypoints,2);
+patch_radius = sqrt(size(landmark_descriptors,1));
 
-potentialKeypoints = oldState.candidate_keypoints;
-potentialDescriptors = oldState.candidate_descriptors_1;
-potentialBearingFirst = oldState.candidate_bearings_1;
-potentialKeypointsFirst = oldState.candidate_keypoints_1;
-potentialPoseIndFirst = oldState.candidate_pose_idx_1;
-N_potential = size(potentialKeypoints, 2);
+candidate_keypoints = oldState.candidate_keypoints;
+candidate_descriptors_1 = oldState.candidate_descriptors_1;
+candidate_bearings_1 = oldState.candidate_bearings_1;
+candidate_keypoints_1 = oldState.candidate_keypoints_1;
+candidate_pose_idx_1 = oldState.candidate_pose_idx_1;
+N_candidates = size(candidate_keypoints, 2);
 
 %% find points in this frame to query
 harrisScore = harris(img, harris_patch_size, harris_kappa);
-newKeypoints = selectKeypoints(harrisScore, num_keypoints, nonmaximum_supression_radius);
-newDescriptors = describeKeypoints(img, newKeypoints, descriptor_radius);
-newKeypoints = flipud(newKeypoints);
+frame_keypoints = selectKeypoints(harrisScore, num_keypoints, nonmaximum_supression_radius);
+frame_descriptors = describeKeypoints(img, frame_keypoints, descriptor_radius);
+frame_keypoints = flipud(frame_keypoints);
 
 %% track established points
 
@@ -113,52 +113,52 @@ H_W_C_est = H_W_last*H_last_C_est;
 P_landmarks_C_est = H_W_C_est\P_landmarks_W;
 
 if use_KLT
-    establishedDescriptorsTransform(5:6,:) = projectPoints(P_landmarks_C_est(1:3,:), K);
+    landmark_transforms(5:6,:) = projectPoints(P_landmarks_C_est(1:3,:), K);
 else
-    newEstablishedKeypointsEst = projectPoints(P_landmarks_C_est(1:3,:), K);
+    landmark_position_estimate = projectPoints(P_landmarks_C_est(1:3,:), K);
 end
 
 % tracking
 if use_KLT
     % track with pyramid KLT
-    establishedDescriptorsImg = reshape(establishedDescriptors,[patch_radius, patch_radius, N_established]);
-	[ps, ds, valid_KLT] = KLTtracker(img, establishedDescriptorsTransform, establishedDescriptorsImg, KLT_match);
+    establishedDescriptorsImg = reshape(landmark_descriptors,[patch_radius, patch_radius, N_landmarks]);
+	[ps, ds, valid_KLT] = KLTtracker(img, landmark_transforms, establishedDescriptorsImg, KLT_match);
 else
-    matches = matchDescriptorsEpiPolar(establishedDescriptors, newDescriptors, newEstablishedKeypointsEst, newKeypoints, match_lambda_est,[],[],0,pixel_motion_err_tol);
+    matches = matchDescriptorsEpiPolar(landmark_descriptors, frame_descriptors, landmark_position_estimate, frame_keypoints, match_lambda_est,[],[],0,pixel_motion_err_tol);
 end
 
 %discard nonvalid tracks
 if use_KLT
-    trackedEstablishedKeypoints = ds(:,valid_KLT);
-    trackedEstablishedDescriptors = establishedDescriptors(:,valid_KLT); %old dexcriptors used
+    tracked_landmark_keypoints = ds(:,valid_KLT);
+    tracked_landmark_descriptors = landmark_descriptors(:,valid_KLT); %old dexcriptors used
     %trackedEstablishedDescriptors = describeKeypoints(img,flipud(round(trackedEstablishedKeypoints)), descriptor_radius); % if new descriptor is wanted
-    trackedEstablishedDescriptorsTransform = ps(:,valid_KLT);
+    tracked_landmark_transforms = ps(:,valid_KLT);
     
-    trackedLandmarks = P_landmarks_W(:,valid_KLT);
-    establishedKeypointsFound = establishedKeypoints(:,valid_KLT);
+    tracked_landmarks = P_landmarks_W(:,valid_KLT);
+    establishedKeypointsFound = landmark_keypoints(:,valid_KLT);
     
     [~, isNew] = setdiff(...
-                round(newKeypoints'/nonmaximum_supression_radius),...
-                round(trackedEstablishedKeypoints'/nonmaximum_supression_radius),...
+                round(frame_keypoints'/nonmaximum_supression_radius),...
+                round(tracked_landmark_keypoints'/nonmaximum_supression_radius),...
                 'rows');
-    newKeypoints = newKeypoints(:,isNew);
-    newDescriptors = newDescriptors(:,isNew);
+    frame_keypoints = frame_keypoints(:,isNew);
+    frame_descriptors = frame_descriptors(:,isNew);
     
 else
     [~, establishedInd, newInd] = find(matches);
     
-    trackedEstablishedKeypoints = newKeypoints(:,newInd);
-    trackedEstablishedDescriptors = newDescriptors(:,newInd);
+    tracked_landmark_keypoints = frame_keypoints(:,newInd);
+    tracked_landmark_descriptors = frame_descriptors(:,newInd);
     
-    establishedKeypointsFound = establishedKeypoints(:,establishedInd);
-    trackedLandmarks = P_landmarks_W(:,establishedInd);
+    establishedKeypointsFound = landmark_keypoints(:,establishedInd);
+    tracked_landmarks = P_landmarks_W(:,establishedInd);
     
     [~, isNew] = setdiff(...
-                round(newKeypoints'/nonmaximum_supression_radius),...
-                round(trackedEstablishedKeypoints'/nonmaximum_supression_radius),...
+                round(frame_keypoints'/nonmaximum_supression_radius),...
+                round(tracked_landmark_keypoints'/nonmaximum_supression_radius),...
                 'rows');
-    newKeypoints = newKeypoints(:,isNew);
-    newDescriptors = newDescriptors(:,isNew);
+    frame_keypoints = frame_keypoints(:,isNew);
+    frame_descriptors = frame_descriptors(:,isNew);
 end
 
 %validation plot established points
@@ -166,29 +166,29 @@ end
 cla(estAx);
 imshow(img,'Parent',estAx);
 hold(estAx,'on');
-scatter(establishedKeypoints(1,:), establishedKeypoints(2,:), 'yx','Linewidth',2','Parent',estAx);
-plot([establishedKeypointsFound(1,:); trackedEstablishedKeypoints(1,:)],[establishedKeypointsFound(2,:); trackedEstablishedKeypoints(2,:)],'r','Linewidth',1,'Parent',estAx);
+scatter(landmark_keypoints(1,:), landmark_keypoints(2,:), 'yx','Linewidth',2','Parent',estAx);
+plot([establishedKeypointsFound(1,:); tracked_landmark_keypoints(1,:)],[establishedKeypointsFound(2,:); tracked_landmark_keypoints(2,:)],'r','Linewidth',1,'Parent',estAx);
 title('tracked established keypoints from last frame','Parent',estAx);
-scatter(trackedEstablishedKeypoints(1,:), trackedEstablishedKeypoints(2,:),'rx','Linewidth',2,'Parent',estAx);
+scatter(tracked_landmark_keypoints(1,:), tracked_landmark_keypoints(2,:),'rx','Linewidth',2,'Parent',estAx);
 
-establishedKeypoints = establishedKeypointsFound; %done here so that the old established can be plotted
+landmark_keypoints = establishedKeypointsFound; %done here so that the old established can be plotted
 
 %% Estimate relative pose
 
-[H_CW, inliers] = ransacLocalization(trackedEstablishedKeypoints, trackedLandmarks, K, reprojection_pix_tol);
+[H_CW, inliers] = ransacLocalization(tracked_landmark_keypoints, tracked_landmarks, K, reprojection_pix_tol);
 fprintf('RANSAC: #inliers: %i, #outliers: %i\n',sum(inliers),sum(inliers==0));
 
-trackedEstablishedKeypoints = trackedEstablishedKeypoints(:,inliers);
-trackedEstablishedDescriptors = trackedEstablishedDescriptors(:,inliers);
+tracked_landmark_keypoints = tracked_landmark_keypoints(:,inliers);
+tracked_landmark_descriptors = tracked_landmark_descriptors(:,inliers);
 if use_KLT
-    trackedEstablishedDescriptorsTransform = trackedEstablishedDescriptorsTransform(:,inliers);
+    tracked_landmark_transforms = tracked_landmark_transforms(:,inliers);
 end
 
-trackedLandmarks = trackedLandmarks(:,inliers);
-establishedKeypoints = establishedKeypoints(:,inliers);
+tracked_landmarks = tracked_landmarks(:,inliers);
+landmark_keypoints = landmark_keypoints(:,inliers);
 
 %validate ransac
-plot([establishedKeypoints(1,:); trackedEstablishedKeypoints(1,:)],[establishedKeypoints(2,:); trackedEstablishedKeypoints(2,:)],'g','Linewidth',1,'Parent',estAx);
+plot([landmark_keypoints(1,:); tracked_landmark_keypoints(1,:)],[landmark_keypoints(2,:); tracked_landmark_keypoints(2,:)],'g','Linewidth',1,'Parent',estAx);
 
 %% compute homogenous transforms
 H_WC = H_CW\eye(4);     % frame World to 1
@@ -196,50 +196,50 @@ H_last_C = H_W_last\H_WC;
 
 
 %% track potential points
-matches = matchDescriptorsEpiPolar(potentialDescriptors, newDescriptors, potentialKeypoints, newKeypoints, match_lambda_pot, H_last_C, K, max_epipole_line_dist, max_match_dist);
+matches = matchDescriptorsEpiPolar(candidate_descriptors_1, frame_descriptors, candidate_keypoints, frame_keypoints, match_lambda_pot, H_last_C, K, max_epipole_line_dist, max_match_dist);
 
 [~, potentialInd, newInd] = find(matches);
-trackedPotentialKeypoints = newKeypoints(:,newInd);
-trackedPotentialDescriptors = newDescriptors(:,newInd);
-N_pot_tracked = size(trackedPotentialKeypoints,2);
+tracked_candidate_keypoints = frame_keypoints(:,newInd);
+tracked_candidate_descriptors = frame_descriptors(:,newInd);
+N_candidates_tracked = size(tracked_candidate_keypoints,2);
 
 %remove tracked potential points from new
-[~, newIndNon] = setdiff(newKeypoints',trackedPotentialKeypoints','rows');
-newKeypoints = newKeypoints(:,newIndNon);
-newDescriptors = newDescriptors(:,newIndNon);
+[~, newIndNon] = setdiff(frame_keypoints',tracked_candidate_keypoints','rows');
+frame_keypoints = frame_keypoints(:,newIndNon);
+frame_descriptors = frame_descriptors(:,newIndNon);
 
 %calculate new bearings
-newBearings = K\[newKeypoints; ones(1,size(newKeypoints,2))];
-newBearings = H_WC(1:3,1:3)*(newBearings./(ones(3,1)*sqrt(sum(newBearings.^2,1))));
+frame_bearings = K\[frame_keypoints; ones(1,size(frame_keypoints,2))];
+frame_bearings = H_WC(1:3,1:3)*(frame_bearings./(ones(3,1)*sqrt(sum(frame_bearings.^2,1))));
 
 %validation plot potentials
 %set(0,'CurrentFigure',4);clf;
 cla(potAx);
 imshow(img,'Parent',potAx);
 hold(potAx,'on');
-scatter(potentialKeypointsFirst(1,:), potentialKeypointsFirst(2,:), 'yx','Linewidth',2,'Parent',potAx);
-plot([potentialKeypointsFirst(1,potentialInd); trackedPotentialKeypoints(1,:)],[potentialKeypointsFirst(2,potentialInd); trackedPotentialKeypoints(2,:)],'g','Linewidth',1, 'Parent',potAx);
-scatter(trackedPotentialKeypoints(1,:), trackedPotentialKeypoints(2,:),'rx','Linewidth',2, 'Parent',potAx);
+scatter(candidate_keypoints_1(1,:), candidate_keypoints_1(2,:), 'yx','Linewidth',2,'Parent',potAx);
+plot([candidate_keypoints_1(1,potentialInd); tracked_candidate_keypoints(1,:)],[candidate_keypoints_1(2,potentialInd); tracked_candidate_keypoints(2,:)],'g','Linewidth',1, 'Parent',potAx);
+scatter(tracked_candidate_keypoints(1,:), tracked_candidate_keypoints(2,:),'rx','Linewidth',2, 'Parent',potAx);
 
 % remove nontracked points after ploting
-potentialBearingFirst = potentialBearingFirst(:,potentialInd);
-potentialKeypointsFirst = potentialKeypointsFirst(:,potentialInd);
-potentialPoseIndFirst = potentialPoseIndFirst(:,potentialInd);
+candidate_bearings_1 = candidate_bearings_1(:,potentialInd);
+candidate_keypoints_1 = candidate_keypoints_1(:,potentialInd);
+candidate_pose_idx_1 = candidate_pose_idx_1(:,potentialInd);
 
 %% triangulate new landmarks
 
 %calculate new bearing
-trackedPotentialKeypointsHom = [trackedPotentialKeypoints; ones(1,size(trackedPotentialKeypoints,2))];
+trackedPotentialKeypointsHom = [tracked_candidate_keypoints; ones(1,size(tracked_candidate_keypoints,2))];
 trackedPotentialKeypointsNorm = K\trackedPotentialKeypointsHom;
 trackedLens = sqrt(sum(trackedPotentialKeypointsNorm.^2,1));
 trackedPotentialKeypointsNormBearing = H_WC(1:3,1:3)*(trackedPotentialKeypointsNorm./(ones(3,1)*trackedLens));
 
 % innerprod = cos(angle)... ==> low innerProd = large angle
-innerProd = sum(trackedPotentialKeypointsNormBearing.*potentialBearingFirst,1);
+innerProd = sum(trackedPotentialKeypointsNormBearing.*candidate_bearings_1,1);
 goodPotentialInds = find(innerProd < triangulationCosThresh);
 
-p1_bearings = potentialBearingFirst(:,goodPotentialInds);
-p1_poses_ind = potentialPoseIndFirst(goodPotentialInds);
+p1_bearings = candidate_bearings_1(:,goodPotentialInds);
+p1_poses_ind = candidate_pose_idx_1(goodPotentialInds);
 p2 = trackedPotentialKeypointsHom(:,goodPotentialInds);
 
 %triangulate landmarks one by one, since they may have different pose
@@ -260,21 +260,21 @@ goodPotentialInds = goodPotentialInds(posZInds);
 % ============ check this thing now!!! working? >
 
 %update established landmarks
-trackedLandmarks = [trackedLandmarks, newLandmarks];
-trackedEstablishedKeypoints = [trackedEstablishedKeypoints, trackedPotentialKeypoints(:,goodPotentialInds)];
-trackedEstablishedDescriptors = [trackedEstablishedDescriptors, trackedPotentialDescriptors(:,goodPotentialInds)];
+tracked_landmarks = [tracked_landmarks, newLandmarks];
+tracked_landmark_keypoints = [tracked_landmark_keypoints, tracked_candidate_keypoints(:,goodPotentialInds)];
+tracked_landmark_descriptors = [tracked_landmark_descriptors, tracked_candidate_descriptors(:,goodPotentialInds)];
 if use_KLT
-    trackedEstablishedDescriptorsTransform = [trackedEstablishedDescriptorsTransform,...
-        [zeros(4,size(trackedPotentialKeypoints(:,goodPotentialInds),2));trackedPotentialKeypoints(:,goodPotentialInds)]];
+    tracked_landmark_transforms = [tracked_landmark_transforms,...
+        [zeros(4,size(tracked_candidate_keypoints(:,goodPotentialInds),2));tracked_candidate_keypoints(:,goodPotentialInds)]];
 end
     
 stillPotentialInds = find(innerProd >= triangulationCosThresh);
-trackedPotentialKeypoints = trackedPotentialKeypoints(:,stillPotentialInds);
-trackedPotentialDescriptors = trackedPotentialDescriptors(:,stillPotentialInds);
+tracked_candidate_keypoints = tracked_candidate_keypoints(:,stillPotentialInds);
+tracked_candidate_descriptors = tracked_candidate_descriptors(:,stillPotentialInds);
 
-potentialBearingFirst = potentialBearingFirst(:, stillPotentialInds);
-potentialKeypointsFirst = potentialKeypointsFirst(:, stillPotentialInds);
-potentialPoseIndFirst = potentialPoseIndFirst(stillPotentialInds);
+candidate_bearings_1 = candidate_bearings_1(:, stillPotentialInds);
+candidate_keypoints_1 = candidate_keypoints_1(:, stillPotentialInds);
+candidate_pose_idx_1 = candidate_pose_idx_1(stillPotentialInds);
 % ============<
 
 %validate plot new landmarks
@@ -283,7 +283,7 @@ scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', potAx);
 
 %set(0,'CurrentFigure',2);
 scatter(newLandmarks(3,:), -newLandmarks(1,:),'.r', 'Parent', mapAx);
-title(['tracked potential keypoints from last frame, #tracked = ',num2str(N_pot_tracked), ', #triangulated = ', num2str(size(newLandmarks,2))],'Parent',potAx);
+title(['tracked potential keypoints from last frame, #tracked = ',num2str(N_candidates_tracked), ', #triangulated = ', num2str(size(newLandmarks,2))],'Parent',potAx);
 axis(mapAx,'equal');
 
 %% return values
@@ -292,21 +292,21 @@ pose = H_WC;
 state.poses = [poses, H_WC(:)];
 
 
-state.landmark_keypoints = trackedEstablishedKeypoints;
-state.landmark_descriptors = trackedEstablishedDescriptors;
+state.landmark_keypoints = tracked_landmark_keypoints;
+state.landmark_descriptors = tracked_landmark_descriptors;
 
 if use_KLT
-    state.landmark_transforms = trackedEstablishedDescriptorsTransform;
+    state.landmark_transforms = tracked_landmark_transforms;
 else
     state.landmark_transforms = [];
 end
 
-state.landmarks = trackedLandmarks;
-state.candidate_keypoints = [trackedPotentialKeypoints, newKeypoints];
-state.candidate_descriptors_1 = [trackedPotentialDescriptors, newDescriptors];
-state.candidate_bearings_1 = [potentialBearingFirst, newBearings];
-state.candidate_keypoints_1 = [potentialKeypointsFirst, newKeypoints];
-state.candidate_pose_idx_1 = [potentialPoseIndFirst, N_frames*ones(1,size(newKeypoints,2))];
+state.landmarks = tracked_landmarks;
+state.candidate_keypoints = [tracked_candidate_keypoints, frame_keypoints];
+state.candidate_descriptors_1 = [tracked_candidate_descriptors, frame_descriptors];
+state.candidate_bearings_1 = [candidate_bearings_1, frame_bearings];
+state.candidate_keypoints_1 = [candidate_keypoints_1, frame_keypoints];
+state.candidate_pose_idx_1 = [candidate_pose_idx_1, N_frames*ones(1,size(frame_keypoints,2))];
 
 %% Assertions - not including transforms since these depend on use of KLT or not
 num_landmarks = size(state.landmark_keypoints,2);
