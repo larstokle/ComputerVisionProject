@@ -16,6 +16,7 @@ function matches = matchDescriptorsAckermannConstrained(...
 debug = true;
 if debug
     tic
+    fprintf('\n === matchDescriptorsAckermannConstrained started === \n');
 end
 %init
 nBins = 50;
@@ -34,6 +35,9 @@ end
 
 % find best valid match
 matches = minUniqueMatchesBelow(descriptorDist, minDescDist*lambda);
+if debug
+    fprintf('#matches before pose estimation: %i\n',sum(matches > 0))
+end
 
 % find and remove keypoints that are too far from their epipolar lines
 if max_epipole_line_dist ~= 0
@@ -66,6 +70,10 @@ if max_epipole_line_dist ~= 0
     matches = minUniqueMatchesBelow(descriptorDist, minDescDist*lambda);
 end
 if debug
+    fprintf('#matches before after estimation: %i\n',sum(matches > 0));
+end
+if debug
     toc
+    fprintf(' === matchDescriptorsAckermannConstrained ended ===\n\n')
 end
 end
