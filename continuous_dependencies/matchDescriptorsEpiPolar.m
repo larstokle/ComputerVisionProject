@@ -1,6 +1,6 @@
 function matches = matchDescriptorsEpiPolar(...
     descriptors1, descriptors2, keypoints1, keypoints2,...
-    lambda, H_12, K, max_epipole_line_dist, max_dist)
+    lambda, H_21, K, max_epipole_line_dist, max_dist)
 %% matches = matchDescriptorsEpiPolar(...
 %    descriptors1, descriptors2, keypoints1, keypoints2,...
 %    lambda, H_12, K, max_epipole_line_dist, max_dist)
@@ -21,30 +21,13 @@ if max_dist ~= 0
 end
 
 if max_epipole_line_dist ~= 0
-    T_12 = H_12(1:3,4);
-    R_12 = H_12(1:3,1:3);
-    normCoord2pix = K(1,1);
-
-    keypoints2_norm = K\[keypoints2; ones(1, size(keypoints2, 2))];
-    keypoints1_norm = K\[keypoints1; ones(1, size(keypoints1, 2))];
-
-    E = cross2matrix(T_12)*R_12;
     
-    %% ==== coorrect way of calculating epipolar distance between all points? >
-    epiPolarNormals1 = E'*keypoints1_norm;
-    epiPolarNormals1 = epiPolarNormals1./(ones(3,1)*sqrt(sum(epiPolarNormals1(1:2,:).^2,1)));
+    epipolar_distances = allVsAllEpipolarLineDistance(H_21,K,homogenize2D(keypoints1),homogenize2D(keypoints2));
+    nonvalid = nonvalid | epipolar_distances > max_epipole_line_dist;
     
-    epiPolarNormals2 = E*keypoints2_norm;
-    epiPolarNormals2 = epiPolarNormals2./(ones(3,1)*sqrt(sum(epiPolarNormals2(1:2,:).^2,1)));
-    
-    epiPolarDists = abs(keypoints2_norm'*epiPolarNormals1 + epiPolarNormals2*keypoints1_norm);
-    
-    nonvalid = nonvalid | epiPolarDists > max_epipole_line_dist;
-    %% ==== <
-    
-    %% === check this!  >
-    p2_far = projectPoints([R_12', -R_12'*T_12]*[keypoints1_norm * 120;ones(1, size(keypoints1, 2))],K);
-    p2_close = projectPoints([R_12', -R_12'*T_12]*[keypoints1_norm * 1;ones(1, size(keypoints1, 2))],K);
+    %% === check this!  > NOTE: R_21 used to be R_12. Not checked if correct here.
+    p2_far = projectPoints([R_21', -R_21'*T_21]*[p1_n * 120;ones(1, size(keypoints1, 2))],K);
+    p2_close = projectPoints([R_21', -R_21'*T_21]*[p1_n * 1;ones(1, size(keypoints1, 2))],K);
     
     p2_min = min(cat(3,p2_far,p2_close),[],3);
     p2_max = max(cat(3,p2_far,p2_close),[],3);
