@@ -76,25 +76,25 @@ frame_keypoints = flipud(frame_keypoints);
 %% track established points
 
 %estimate new point with same homogenous transform as last transform
-H_W_lastlast = reshape(poses(:,end-1),4,4);
-H_W_last = reshape(poses(:,end),4,4);
+H_W_prev2 = reshape(poses(:,end-1),4,4);
+H_W_prev = reshape(poses(:,end),4,4);
 
 % Estimate translation
-w_t_lastlast_last = H_W_last(1:3,4) - H_W_lastlast(1:3,4); %last translation
-w_t_last_C_est = [w_t_lastlast_last(1); 0; w_t_lastlast_last(3)]; % direction like last translation in z and x only
-t_last_C_est = H_W_lastlast(1:3,1:3)'*w_t_last_C_est*norm(w_t_lastlast_last)/norm(w_t_last_C_est); % magnitude like last tranlation
+w_t_prev2_prev = H_W_prev(1:3,4) - H_W_prev2(1:3,4); %last translation
+w_t_prev_C_est = [w_t_prev2_prev(1); 0; w_t_prev2_prev(3)]; % direction like last translation in z and x only
+t_prev_C_est = H_W_prev2(1:3,1:3)'*w_t_prev_C_est*norm(w_t_prev2_prev)/norm(w_t_prev_C_est); % magnitude like last tranlation
 
 % Estimate rotation
-R_lastlast_last = H_W_lastlast(1:3,1:3)'*H_W_last(1:3,1:3); %last rotation
-omega_hat_lastlast_last = logm(R_lastlast_last); %last skew
-theta_lastlast_last = norm(matrix2cross(omega_hat_lastlast_last)); %last angle of rotation
-omega_last_C_est = H_W_lastlast(1:3,1:3)'*[0; theta_lastlast_last; 0]; %rotation magnitude equal to last but limited to around y axis
-R_last_C_est = expm(cross2matrix(omega_last_C_est));
+R_prev2_prev = H_W_prev2(1:3,1:3)'*H_W_prev(1:3,1:3); %last rotation
+omega_hat_prev2_prev = logm(R_prev2_prev); %last skew
+theta_prev2_prev = norm(matrix2cross(omega_hat_prev2_prev)); %last angle of rotation
+omega_prev_C_est = H_W_prev2(1:3,1:3)'*[0; theta_prev2_prev; 0]; %rotation magnitude equal to last but limited to around y axis
+R_prev_C_est = expm(cross2matrix(omega_prev_C_est));
 
 % Estimate homogenous transform
-H_last_C_est = [R_last_C_est, t_last_C_est;
+H_prev_C_est = [R_prev_C_est, t_prev_C_est;
                 0, 0, 0, 1];
-H_W_C_est = H_W_last*H_last_C_est;
+H_W_C_est = H_W_prev*H_prev_C_est;
 
 % Estimate location of landmark keypoints in the (estimated) current camera frame
 landmarks_C = H_W_C_est\landmarks_w;
@@ -187,10 +187,10 @@ plot([tracked_landmarks_prev_keypoints(1,:); tracked_landmarks_frame_keypoints(1
 
 %% Compute homogenous transforms
 H_WC = H_CW\eye(4);     % World to 1
-H_last_C = H_W_last\H_WC;
+H_prev_C = H_W_prev\H_WC;
 
 %% Track candidate keypoints
-matches = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_last_C, K, max_epipole_line_dist, max_match_dist);
+matches = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist, max_match_dist);
 
 [~, prev_frame_idx, current_frame_idx] = find(matches);
 tracked_candidate_keypoints = frame_keypoints(:,current_frame_idx);
