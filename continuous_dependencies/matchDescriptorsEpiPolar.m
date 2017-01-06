@@ -29,13 +29,20 @@ if max_epipole_line_dist ~= 0
     keypoints1_norm = K\[keypoints1; ones(1, size(keypoints1, 2))];
 
     E = cross2matrix(T_12)*R_12;
-    epiPolarNormals = E'*keypoints1_norm;
-    epiPolarNormals = epiPolarNormals./(ones(3,1)*sqrt(sum(epiPolarNormals.^2,1)));
-
-    epiPolarDists = normCoord2pix*abs(keypoints2_norm'*epiPolarNormals);
+    
+    %% ==== coorrect way of calculating epipolar distance between all points? >
+    epiPolarNormals1 = E'*keypoints1_norm;
+    epiPolarNormals1 = epiPolarNormals1./(ones(3,1)*sqrt(sum(epiPolarNormals1(1:2,:).^2,1)));
+    
+    epiPolarNormals2 = E*keypoints2_norm;
+    epiPolarNormals2 = epiPolarNormals2./(ones(3,1)*sqrt(sum(epiPolarNormals2(1:2,:).^2,1)));
+    
+    epiPolarDists = abs(keypoints2_norm'*epiPolarNormals1 + epiPolarNormals2*keypoints1_norm);
     
     nonvalid = nonvalid | epiPolarDists > max_epipole_line_dist;
+    %% ==== <
     
+    %% === check this!  >
     p2_far = projectPoints([R_12', -R_12'*T_12]*[keypoints1_norm * 120;ones(1, size(keypoints1, 2))],K);
     p2_close = projectPoints([R_12', -R_12'*T_12]*[keypoints1_norm * 1;ones(1, size(keypoints1, 2))],K);
     
@@ -47,6 +54,7 @@ if max_epipole_line_dist ~= 0
     
     nonvalid = nonvalid | ~(ones(N2,1)*p2_min(1,:) < keypoints2(1,:)'*ones(1,N1) & keypoints2(1,:)'*ones(1,N1) < ones(N2,1)*p2_max(1,:))...
                         | ~(ones(N2,1)*p2_min(2,:) < keypoints2(2,:)'*ones(1,N1) & keypoints2(2,:)'*ones(1,N1) < ones(N2,1)*p2_max(2,:));
+   %% ====== <
 end
 
 descriptorDist = pdist2(double(descriptors2)', double(descriptors1)', 'euclidean');
