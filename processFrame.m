@@ -23,8 +23,8 @@ addpath('continuous_dependencies/');
 
 %% Init plotting
 mapAx = get(2,'CurrentAxes');
-estAx = get(3,'CurrentAxes');
-potAx = get(4,'CurrentAxes');
+lndmrkAx = get(3,'CurrentAxes');
+cndtAx = get(4,'CurrentAxes');
 
 % Tuning parameters frame (new) keypoints
 harris_patch_size = 9;
@@ -159,13 +159,13 @@ end
 
 % Validation plot landmark points
 %set(0,'CurrentFigure',3);clf;
-cla(estAx);
-imshow(img,'Parent',estAx);
-hold(estAx,'on');
-scatter(landmark_prev_keypoints(1,:), landmark_prev_keypoints(2,:), 'yx','Linewidth',2','Parent',estAx);
-plot([tracked_landmarks_prev_keypoints(1,:); tracked_landmarks_frame_keypoints(1,:)],[tracked_landmarks_prev_keypoints(2,:); tracked_landmarks_frame_keypoints(2,:)],'r','Linewidth',1,'Parent',estAx);
-title('Landmarks tracked from previous frame','Parent',estAx);
-scatter(tracked_landmarks_frame_keypoints(1,:), tracked_landmarks_frame_keypoints(2,:),'rx','Linewidth',2,'Parent',estAx);
+cla(lndmrkAx);
+imshow(img,'Parent',lndmrkAx);
+hold(lndmrkAx,'on');
+scatter(landmark_prev_keypoints(1,:), landmark_prev_keypoints(2,:), 'yx','Linewidth',2','Parent',lndmrkAx);
+plot([tracked_landmarks_prev_keypoints(1,:); tracked_landmarks_frame_keypoints(1,:)],[tracked_landmarks_prev_keypoints(2,:); tracked_landmarks_frame_keypoints(2,:)],'r','Linewidth',1,'Parent',lndmrkAx);
+title('Landmarks tracked from previous frame','Parent',lndmrkAx);
+scatter(tracked_landmarks_frame_keypoints(1,:), tracked_landmarks_frame_keypoints(2,:),'rx','Linewidth',2,'Parent',lndmrkAx);
 
 %% Estimate relative pose
 
@@ -183,7 +183,7 @@ tracked_landmarks = tracked_landmarks(:,inliers);
 tracked_landmarks_prev_keypoints = tracked_landmarks_prev_keypoints(:,inliers);
 
 %validate ransac
-plot([tracked_landmarks_prev_keypoints(1,:); tracked_landmarks_frame_keypoints(1,:)],[tracked_landmarks_prev_keypoints(2,:); tracked_landmarks_frame_keypoints(2,:)],'g','Linewidth',1,'Parent',estAx);
+plot([tracked_landmarks_prev_keypoints(1,:); tracked_landmarks_frame_keypoints(1,:)],[tracked_landmarks_prev_keypoints(2,:); tracked_landmarks_frame_keypoints(2,:)],'g','Linewidth',1,'Parent',lndmrkAx);
 
 %% Compute homogenous transforms
 H_WC = H_CW\eye(4);     % World to 1
@@ -212,12 +212,12 @@ frame_bearings = calculateBearingVectors(frame_keypoints,H_WC,K);
 
 %validation plot candidates
 %set(0,'CurrentFigure',4);clf;
-cla(potAx);
-imshow(img,'Parent',potAx);
-hold(potAx,'on');
-scatter(candidate_keypoints_first(1,:), candidate_keypoints_first(2,:), 'yx','Linewidth',2,'Parent',potAx);
-plot([candidate_keypoints_first(1,prev_frame_idx); tracked_candidate_keypoints(1,:)],[candidate_keypoints_first(2,prev_frame_idx); tracked_candidate_keypoints(2,:)],'g','Linewidth',1, 'Parent',potAx);
-scatter(tracked_candidate_keypoints(1,:), tracked_candidate_keypoints(2,:),'rx','Linewidth',2, 'Parent',potAx);
+cla(cndtAx);
+imshow(img,'Parent',cndtAx);
+hold(cndtAx,'on');
+scatter(candidate_keypoints_first(1,:), candidate_keypoints_first(2,:), 'yx','Linewidth',2,'Parent',cndtAx);
+plot([candidate_keypoints_first(1,prev_frame_idx); tracked_candidate_keypoints(1,:)],[candidate_keypoints_first(2,prev_frame_idx); tracked_candidate_keypoints(2,:)],'g','Linewidth',1, 'Parent',cndtAx);
+scatter(tracked_candidate_keypoints(1,:), tracked_candidate_keypoints(2,:),'rx','Linewidth',2, 'Parent',cndtAx);
 
 % Remove nontracked candidates after plotting
 candidate_bearings_first = candidate_bearings_first(:,prev_frame_idx);
@@ -280,11 +280,11 @@ candidate_pose_idx_first = candidate_pose_idx_first(not_triangulated);
 
 % Validation plot new landmarks
 %set(0,'CurrentFigure',4);
-scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', potAx);
+scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', cndtAx);
 
 %set(0,'CurrentFigure',2);
 scatter(new_landmarks(3,:), -new_landmarks(1,:),'.r', 'Parent', mapAx);
-title(['Tracked candidate keypoints from last frame, #tracked = ',num2str(N_candidates_tracked), ', #triangulated = ', num2str(size(new_landmarks,2))],'Parent',potAx);
+title(['Tracked candidate keypoints from last frame, #tracked = ',num2str(N_candidates_tracked), ', #triangulated = ', num2str(size(new_landmarks,2))],'Parent',cndtAx);
 axis(mapAx,'equal');
 
 %% Set return value and update state
