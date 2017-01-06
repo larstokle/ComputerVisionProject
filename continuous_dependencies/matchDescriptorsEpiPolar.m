@@ -21,22 +21,31 @@ if max_dist ~= 0
 end
 
 if max_epipole_line_dist ~= 0
+    % Extract rotation and translation
+    T_21 = H_21(1:3,4);
+    R_21 = H_21(1:3,1:3);
     
-    epipolar_distances = allVsAllEpipolarLineDistance(H_21,K,homogenize2D(keypoints1),homogenize2D(keypoints2));
+    % Calculate essential matrix
+    E_21 = cross2matrix(T_21)*R_21;
+   
+    % Calculate fundamental matrix
+    F_21 = inv(K')*E_21*inv(K);
+    
+    epipolar_distances = allVsAllEpipolarLineDistance(F_21,homogenize2D(keypoints1),homogenize2D(keypoints2));
     nonvalid = nonvalid | epipolar_distances > max_epipole_line_dist;
     
     %% === check this!  > NOTE: R_21 used to be R_12. Not checked if correct here.
-    p2_far = projectPoints([R_21', -R_21'*T_21]*[p1_n * 120;ones(1, size(keypoints1, 2))],K);
-    p2_close = projectPoints([R_21', -R_21'*T_21]*[p1_n * 1;ones(1, size(keypoints1, 2))],K);
-    
-    p2_min = min(cat(3,p2_far,p2_close),[],3);
-    p2_max = max(cat(3,p2_far,p2_close),[],3);
-    
-    N1 = size(keypoints1,2);
-    N2 = size(keypoints2,2);
-    
-    nonvalid = nonvalid | ~(ones(N2,1)*p2_min(1,:) < keypoints2(1,:)'*ones(1,N1) & keypoints2(1,:)'*ones(1,N1) < ones(N2,1)*p2_max(1,:))...
-                        | ~(ones(N2,1)*p2_min(2,:) < keypoints2(2,:)'*ones(1,N1) & keypoints2(2,:)'*ones(1,N1) < ones(N2,1)*p2_max(2,:));
+%     p2_far = projectPoints([R_21', -R_21'*T_21]*[p1_n * 120;ones(1, size(keypoints1, 2))],K);
+%     p2_close = projectPoints([R_21', -R_21'*T_21]*[p1_n * 1;ones(1, size(keypoints1, 2))],K);
+%     
+%     p2_min = min(cat(3,p2_far,p2_close),[],3);
+%     p2_max = max(cat(3,p2_far,p2_close),[],3);
+%     
+%     N1 = size(keypoints1,2);
+%     N2 = size(keypoints2,2);
+%     
+%     nonvalid = nonvalid | ~(ones(N2,1)*p2_min(1,:) < keypoints2(1,:)'*ones(1,N1) & keypoints2(1,:)'*ones(1,N1) < ones(N2,1)*p2_max(1,:))...
+%                         | ~(ones(N2,1)*p2_min(2,:) < keypoints2(2,:)'*ones(1,N1) & keypoints2(2,:)'*ones(1,N1) < ones(N2,1)*p2_max(2,:));
    %% ====== <
 end
 

@@ -1,11 +1,11 @@
-function [thetaEst, inliers] = onePointHistogramVote(p1, p2, nBins, K, maxDist)
-debug = true; debugFig = 1;
+function [thetaEst, varTheta, inliers] = onePointHistogramVote(p1, p2, nBins, K, maxDist)
+debug = false; debugFig = 1;
 
 nEdges = nBins+1;
 binEdges = (0:nEdges)*pi/nEdges - pi/2;
 
-theta = -2*atan((p2(2,:)-p1(2,:))./(p2(1,:) + p1(1,:)));
-%varTheta = var(theta); % theta is too spread, this could be used to tell
+theta = -2*atan((p2(2,:) - p1(2,:))./(p2(1,:) + p1(1,:)));
+varTheta = var(theta); % theta is too spread, this could be used to tell
 %that this is going to fail.
 
 thetaCount = histcounts(theta, binEdges);
@@ -36,21 +36,22 @@ else
     end
 end
 
+if nargout == 3
+    R = [0, 0, 1;
+        -1, 0, 0;
+        0, -1, 0];
+    E = [0, 0, sin(thetaEst/2);
+         0, 0, cos(thetaEst/2);
+         sin(thetaEst/2), -cos(thetaEst/2), 0];
+    E = R'*E*R;
 
-R = [0, 0, 1;
-    -1, 0, 0;
-    0, -1, 0];
-E = [0, 0, sin(thetaEst/2);
-     0, 0, cos(thetaEst/2);
-     sin(thetaEst/2), -cos(thetaEst/2), 0];
-E = R'*E*R;
- 
-F = inv(K')*E*inv(K);
-p1_hom = [p1;ones(1,size(p1,2))];
-p2_hom = [p2;ones(1,size(p2,2))];
+    F = inv(K')*E*inv(K);
+    p1_hom = [p1;ones(1,size(p1,2))];
+    p2_hom = [p2;ones(1,size(p2,2))];
 
-dists = distPoint2EpipolarLine_pointwise(F,p2_hom,p1_hom);
-inliers = dists < maxDist;
+    dists = distPoint2EpipolarLine_pointwise(F,p2_hom,p1_hom);
+    inliers = dists < maxDist;
+end
 end
 
 % function dist = distPoint2EpipolarLine_pointwise(F,p1,p2)
