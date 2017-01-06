@@ -54,13 +54,11 @@ function [T,S] = init(img0,img1,K)
     end
     
     % Filter matches with to large distance
-    acceptedMatchIdx = find(sum((p0 - p1).^2,1) < corner_distance_limit^2);
-    p0 = p0(:,acceptedMatchIdx);
-    p1 = p1(:,acceptedMatchIdx);
-    descriptors1 = descriptors1(:,acceptedMatchIdx);
+    within_distance_limit = find(sum((p0 - p1).^2,1) < corner_distance_limit^2);
     
-    p0 = [p0 ; ones(1,length(p0))];
-    p1 = [p1 ; ones(1,length(p1))];
+    p0 = homogenize2D(p0(:,within_distance_limit));
+    p1 = homogenize2D(p1(:,within_distance_limit));
+    descriptors1 = descriptors1(:,within_distance_limit);
     
     inlier_mask = (ones(1,length(p0))>0);
     
@@ -252,16 +250,16 @@ function [T,S] = init(img0,img1,K)
     dummypose = [dummyRot(1:3,1:3) , T(1:3,4)./2 ; 0 0 0 1]; % Half the translation
     
     state.poses = [dummypose(:) , T(:)];
-    state.establishedKeypoints = p1(1:2,:);
-    state.establishedDescriptors = descriptors1;
-    state.establishedDescriptorsTransform = [zeros(4,size(state.establishedKeypoints,2)); state.establishedKeypoints];
+    state.landmark_keypoints = p1(1:2,:);
+    state.landmark_descriptors = descriptors1;
+    state.landmark_transforms = [zeros(4,size(state.landmark_keypoints,2)); state.landmark_keypoints];
     state.landmarks = P;
 
-    state.potentialKeypoints = potential_keypoints;
-    state.potentialDescriptors = potential_descriptors;
-    state.potentialBearingFirst = potentialBearing; % TODO: Test this
-    state.potentialKeypointsFirst = potential_keypoints;
-    state.potentialPoseIndFirst = 2*ones(1,size(potential_keypoints,2));
+    state.candidate_keypoints = potential_keypoints;
+    state.candidate_descriptors = potential_descriptors;
+    state.candidate_bearings_1 = potentialBearing; % TODO: Test this
+    state.candidate_keypoints_1 = potential_keypoints;
+    state.candidate_pose_idx_1 = 2*ones(1,size(potential_keypoints,2));
     
     S = state;
 end
