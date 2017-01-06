@@ -256,7 +256,7 @@ function [T,S] = init(img0,img1,K)
     state.landmarks = P;
 
     state.candidate_keypoints = potential_keypoints;
-    state.candidate_descriptors_1 = potential_descriptors;
+    state.candidate_descriptors = potential_descriptors;
     state.candidate_bearings_1 = potentialBearing; % TODO: Test this
     state.candidate_keypoints_1 = potential_keypoints;
     state.candidate_pose_idx_1 = 2*ones(1,size(potential_keypoints,2));

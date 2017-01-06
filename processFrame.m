@@ -61,7 +61,7 @@ N_landmarks = size(landmark_prev_keypoints,2);
 patch_radius = sqrt(size(landmark_descriptors,1));
 
 candidate_prev_keypoints = old_state.candidate_keypoints;
-candidate_descriptors_first = old_state.candidate_descriptors_1;
+candidate_descriptors_prev = old_state.candidate_descriptors;
 candidate_bearings_first = old_state.candidate_bearings_1;
 candidate_keypoints_first = old_state.candidate_keypoints_1;
 candidate_pose_idx_first = old_state.candidate_pose_idx_1;
@@ -190,7 +190,7 @@ H_WC = H_CW\eye(4);     % World to 1
 H_last_C = H_W_last\H_WC;
 
 %% Track candidate keypoints
-matches = matchDescriptorsEpiPolar(candidate_descriptors_first, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_last_C, K, max_epipole_line_dist, max_match_dist);
+matches = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_last_C, K, max_epipole_line_dist, max_match_dist);
 
 [~, prev_frame_idx, current_frame_idx] = find(matches);
 tracked_candidate_keypoints = frame_keypoints(:,current_frame_idx);
@@ -303,7 +303,7 @@ end
 
 state.landmarks = tracked_landmarks;
 state.candidate_keypoints = [tracked_candidate_keypoints, frame_keypoints];
-state.candidate_descriptors_1 = [tracked_candidate_descriptors, frame_descriptors];
+state.candidate_descriptors = [tracked_candidate_descriptors, frame_descriptors];
 state.candidate_bearings_1 = [candidate_bearings_first, frame_bearings];
 state.candidate_keypoints_1 = [candidate_keypoints_first, frame_keypoints];
 state.candidate_pose_idx_1 = [candidate_pose_idx_first, N_frames*ones(1,size(frame_keypoints,2))];
@@ -316,7 +316,7 @@ assert(size(state.landmarks,2)==num_landmarks);
 
 num_candidate_keypoints = size(state.candidate_keypoints,2);
 assert(size(state.candidate_keypoints,2)==num_candidate_keypoints);
-assert(size(state.candidate_descriptors_1,2)==num_candidate_keypoints);
+assert(size(state.candidate_descriptors,2)==num_candidate_keypoints);
 assert(size(state.candidate_bearings_1,2)==num_candidate_keypoints);
 assert(size(state.candidate_keypoints_1,2)==num_candidate_keypoints);
 assert(size(state.candidate_pose_idx_1,2)==num_candidate_keypoints);
