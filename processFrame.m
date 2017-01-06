@@ -67,17 +67,17 @@ N_frames = size(poses,2) + 1;
 
 P_landmarks_W = oldState.landmarks;
 
-establishedKeypoints = oldState.establishedKeypoints;
-establishedDescriptors = oldState.establishedDescriptors;
-establishedDescriptorsTransform = oldState.establishedDescriptorsTransform;
+establishedKeypoints = oldState.landmark_keypoints;
+establishedDescriptors = oldState.landmark_descriptors;
+establishedDescriptorsTransform = oldState.landmark_transforms;
 N_established = size(establishedKeypoints,2);
 patch_radius = sqrt(size(establishedDescriptors,1));
 
-potentialKeypoints = oldState.potentialKeypoints;
-potentialDescriptors = oldState.potentialDescriptors;
-potentialBearingFirst = oldState.potentialBearingFirst;
-potentialKeypointsFirst = oldState.potentialKeypointsFirst;
-potentialPoseIndFirst = oldState.potentialPoseIndFirst;
+potentialKeypoints = oldState.candidate_keypoints;
+potentialDescriptors = oldState.candidate_descriptors_1;
+potentialBearingFirst = oldState.candidate_bearings_1;
+potentialKeypointsFirst = oldState.candidate_keypoints_1;
+potentialPoseIndFirst = oldState.candidate_pose_idx_1;
 N_potential = size(potentialKeypoints, 2);
 
 %% find points in this frame to query
@@ -292,20 +292,35 @@ pose = H_WC;
 state.poses = [poses, H_WC(:)];
 
 
-state.establishedKeypoints = trackedEstablishedKeypoints;
-state.establishedDescriptors = trackedEstablishedDescriptors;
+state.landmark_keypoints = trackedEstablishedKeypoints;
+state.landmark_descriptors = trackedEstablishedDescriptors;
+
 if use_KLT
-    state.establishedDescriptorsTransform = trackedEstablishedDescriptorsTransform;
+    state.landmark_transforms = trackedEstablishedDescriptorsTransform;
 else
-    state.establishedDescriptorsTransform = [];
+    state.landmark_transforms = [];
 end
+
 state.landmarks = trackedLandmarks;
+state.candidate_keypoints = [trackedPotentialKeypoints, newKeypoints];
+state.candidate_descriptors_1 = [trackedPotentialDescriptors, newDescriptors];
+state.candidate_bearings_1 = [potentialBearingFirst, newBearings];
+state.candidate_keypoints_1 = [potentialKeypointsFirst, newKeypoints];
+state.candidate_pose_idx_1 = [potentialPoseIndFirst, N_frames*ones(1,size(newKeypoints,2))];
 
-state.potentialKeypoints = [trackedPotentialKeypoints, newKeypoints];
-state.potentialDescriptors = [trackedPotentialDescriptors, newDescriptors];
-state.potentialBearingFirst = [potentialBearingFirst, newBearings];
-state.potentialKeypointsFirst = [potentialKeypointsFirst, newKeypoints];
-state.potentialPoseIndFirst = [potentialPoseIndFirst, N_frames*ones(1,size(newKeypoints,2))];
+%% Assertions - not including transforms since these depend on use of KLT or not
+num_landmarks = size(state.landmark_keypoints,2);
+assert(size(state.landmark_keypoints,2)==num_landmarks);
+assert(size(state.landmark_descriptors,2)==num_landmarks);
+assert(size(state.landmarks,2)==num_landmarks);
 
+num_candidate_keypoints = size(state.candidate_keypoints,2);
+assert(size(state.candidate_keypoints,2)==num_candidate_keypoints);
+assert(size(state.candidate_descriptors_1,2)==num_candidate_keypoints);
+assert(size(state.candidate_bearings_1,2)==num_candidate_keypoints);
+assert(size(state.candidate_keypoints_1,2)==num_candidate_keypoints);
+assert(size(state.candidate_pose_idx_1,2)==num_candidate_keypoints);
+
+assert(size(state.poses,2)==N_frames);
 
 end
