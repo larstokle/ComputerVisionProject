@@ -4,7 +4,7 @@ debug = true; debugFig = 1;
 nEdges = nBins+1;
 binEdges = (0:nEdges)*pi/nEdges - pi/2;
 
-theta = -2*atan((p2(2,:)-p1(2,:))./(p2(1,:) + p2(1,:)));
+theta = -2*atan((p2(2,:)-p1(2,:))./(p2(1,:) + p1(1,:)));
 %varTheta = var(theta); % theta is too spread, this could be used to tell
 %that this is going to fail.
 
@@ -37,14 +37,36 @@ else
 end
 
 
-
+R = [0, 0, 1;
+    -1, 0, 0;
+    0, -1, 0];
 E = [0, 0, sin(thetaEst/2);
      0, 0, cos(thetaEst/2);
      sin(thetaEst/2), -cos(thetaEst/2), 0];
+E = R'*E*R;
  
-F = K'\E/K;
+F = inv(K')*E*inv(K);
+p1_hom = [p1;ones(1,size(p1,2))];
+p2_hom = [p2;ones(1,size(p2,2))];
 
-dists = distPoint2EpipolarLine_pointwise(F,[p1;ones(1,size(p1,2))],[p2;ones(1,size(p2,2))]);
+dists = distPoint2EpipolarLine_pointwise(F,p2_hom,p1_hom);
 inliers = dists < maxDist;
 end
+
+% function dist = distPoint2EpipolarLine_pointwise(F,p1,p2)
+% 
+%     NumPoints = size(p1,2);
+%     homog_points = [p1, p2];
+%     epi_lines = [F.'*p2, F*p1];
+%     denom = sum(epi_lines(1:2,:).^2, 1);
+%     dist = (sum(epi_lines.*homog_points,1).^2)./denom ;
+%     dist = sqrt(dist(1:NumPoints) + dist(NumPoints+1:end));
+%     
+% %quiver(
+% %       [p1(1,find(inlier)), p2(1,find(inlier))],...
+% %       [p1(2,find(inlier)), p2(2,find(inlier))],...
+% %       [epi_lines(1,find(inlier))./denom(find(inlier)), epi_lines(1,NumPoints + find(inlier))./denom(NumPoints + find(inlier))],...
+% %       [epi_lines(2,NumPoints + find(inlier))./denom(find(inlier)), epi_lines(2,NumPoints + find(inlier))./denom(NumPoints + find(inlier))]...
+% %       )
+% end
 
