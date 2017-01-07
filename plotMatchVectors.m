@@ -6,11 +6,11 @@ function plotMatchVectors(p1,p2)
     
     assert(numel(p1)==numel(p2))
     assert(dim <= 3 && dim >=2);
-    assert(all(p1(3,:)==1));
-    assert(all(p2(3,:)==1));
     
     if dim == 3
        % De-homogenize
+       assert(all(p1(3,:)==1));
+       assert(all(p2(3,:)==1));
        p1 = p1(1:2,:);
        p2 = p2(1:2,:);
     end
