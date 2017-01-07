@@ -1,5 +1,5 @@
 function [thetaEst, varTheta, inliers] = onePointHistogramVote(p1, p2, nBins, K, maxDist)
-debug = true; debugFig = 1;
+debug = false; debugFig = 1;
 
 if size(p1,1) == 2
     p1 = homogenize2D(p1);
@@ -8,8 +8,17 @@ if size(p2,1) == 2
     p2 = homogenize2D(p2);
 end
 
+R = [0, 0, 1;
+        -1, 0, 0;
+        0, -1, 0];
+    
+
 p1 = K\p1;
 p2 = K\p2;
+
+p1 = R*p1;
+p2 = R*p2;
+
 
 p1 = normc(p1);
 p2 = normc(p2);
@@ -17,6 +26,7 @@ p2 = normc(p2);
 % binSpread = pi/3;
 % binStep = binSpread/nBins;
 % binEdges = (0:nBins)*binStep - binSpread/2;
+
 
 theta = -2*atan((p2(2,:).*p1(3,:) - p1(2,:).*p2(3,:))./(p2(1,:).*p1(3,:) + p1(1,:).*p2(3,:)));
 meanTheta = mean(theta);
@@ -30,7 +40,7 @@ thetaCount = histcounts(theta, binEdges);
 
 if debug
     figure(debugFig);clf;
-    histogram(theta);
+    stairs(binEdges(1:end-1)*180/pi,thetaCount);
 end
 
 [thetaCountMax, maxCountInd] = max(thetaCount);
@@ -44,20 +54,21 @@ if maxCountInd > 1 && maxCountInd < nBins
     y = p(1)*x^2 + p(2)*x + p(3);
     if debug
         hold on;
-        scatter(thetaEst,y);
+        scatter(thetaEst*180/pi,y);
     end
 else
     thetaEst = binEdges(maxCountInd) + binStep/2; %middle of the bin
     if debug
         hold on
-        scatter(thetaEst, thetaCountMax);
+        scatter(thetaEst*180/pi, thetaCountMax);
     end
 end
 
+if debug
+    fprintf('1point estimates %f deg\n', thetaEst*180/pi)
+end
+
 if nargout == 3
-    R = [0, 0, 1;
-        -1, 0, 0;
-        0, -1, 0];
     E = [0, 0, sin(thetaEst/2);
          0, 0, cos(thetaEst/2);
          sin(thetaEst/2), -cos(thetaEst/2), 0];
