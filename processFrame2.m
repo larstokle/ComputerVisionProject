@@ -11,21 +11,22 @@ addpath('continuous_dependencies/');
 
 triangulationAngleThresh = 1*pi/180;
 triangulationCosThresh = cos(triangulationAngleThresh);
+pixel_tolerance_localization = 10;
 
 %% Extract variables from previous state
 poses = oldState.poses;
 N_frames = size(poses,2) + 1;
 
 landmarks = oldState.landmarks;
-landmark_keypoints = oldState.establishedKeypoints;
-landmark_descriptors = oldState.establishedDescriptors;
+landmark_keypoints = oldState.landmark_keypoints;
+landmark_descriptors = oldState.landmark_descriptors;
 num_landmarks = size(landmark_keypoints,2);
 
-candidate_keypoints = oldState.potentialKeypoints;
-candidate_descriptors = oldState.potentialDescriptors;
-candidate_bearing_1 = oldState.potentialBearingFirst;
-candidate_keypoints_1 = oldState.potentialKeypointsFirst;
-candidate_T_idx_1 = oldState.potentialPoseIndFirst;
+candidate_keypoints = oldState.candidate_keypoints;
+candidate_descriptors = oldState.candidate_descriptors;
+candidate_bearing_1 = oldState.candidate_bearings_1;
+candidate_keypoints_1 = oldState.candidate_keypoints_1;
+candidate_T_idx_1 = oldState.candidate_pose_idx_1;
 num_candidates = size(candidate_keypoints, 2);
 
 %% Size test start %%
@@ -116,7 +117,7 @@ assert(size(candidate_T_idx_1,2)==num_candidate_keypoints);
 
 %% Estimate relative pose
 
-[H_C_W, inliers] = ransacLocalization(landmark_keypoints, landmarks, K);
+[H_C_W, inliers] = ransacLocalization(landmark_keypoints, landmarks, K,pixel_tolerance_localization);
 fprintf('Number of inliers found: %i\n',sum(inliers));
 
 % Remove outlier landmark-keypoint-correspondences
@@ -207,16 +208,16 @@ poses = [poses pose(:)];
 
 %% Set new state
 state.poses = poses;
-state.establishedKeypoints = landmark_keypoints;
-state.establishedDescriptors = landmark_descriptors;
-state.establishedDescriptorsTransform = [];
+state.landmark_keypoints = landmark_keypoints;
+state.landmark_descriptors = landmark_descriptors;
+state.landmark_transforms = [];
 state.landmarks = landmarks;
 
-state.potentialKeypoints = candidate_keypoints;
-state.potentialDescriptors = candidate_descriptors;
-state.potentialBearingFirst = candidate_bearing_1;
-state.potentialKeypointsFirst = candidate_keypoints_1;
-state.potentialPoseIndFirst = candidate_T_idx_1;
+state.candidate_keypoints = candidate_keypoints;
+state.candidate_descriptors = candidate_descriptors;
+state.candidate_bearings_1 = candidate_bearing_1;
+state.candidate_keypoints_1 = candidate_keypoints_1;
+state.candidate_pose_idx_1 = candidate_T_idx_1;
 
 %% Assertions
 num_landmarks = size(landmark_keypoints,2);
