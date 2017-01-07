@@ -7,7 +7,7 @@ assert(size(img_templates,3)==num_templates);
 % Flip it! This is to comply with LK-tracker from the exercise sessions
 transform(5:6,:) = flipud(transform(5:6,:));
 
-debug = false;
+debug = true;
 
 if debug
     prev_pos = transform(5:6,:);
