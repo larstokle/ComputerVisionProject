@@ -21,7 +21,8 @@ addpath('continuous_dependencies/all_solns/05_ransac');
 addpath('continuous_dependencies/all_solns/07_LK_Tracker');
 addpath('continuous_dependencies/');
 
-%% Init plotting
+%% Init 
+% plotting
 mapAx = get(2,'CurrentAxes');
 lndmrkAx = get(3,'CurrentAxes');
 cndtAx = get(4,'CurrentAxes');
@@ -33,8 +34,9 @@ num_keypoints = 1500;
 nonmaximum_supression_radius = 8;
 descriptor_radius = 9;
 
+
 % Tuning parameters landmarks and pose estimation
-use_KLT = true;
+use_KLT = false;
 KLT_match = 0.001; %fraction of maximum patch distance
 match_lambda_lndmrk = 7;
 max_match_dist_lndmrk = 200;
@@ -42,6 +44,7 @@ reprojection_pix_tol = 10;
 max_epipole_line_dist_lndmrk = 15;
 
 % Tuning parameters candidate keypoints and triangulation
+useAckermann_cndt = true;
 match_lambda_candidates = 7;
 max_epipole_line_dist_cndt = 15;
 max_match_dist_cndt = 150;
@@ -74,31 +77,59 @@ frame_keypoints = selectKeypoints(harris_score, num_keypoints, nonmaximum_supres
 frame_descriptors = describeKeypoints(img, frame_keypoints, descriptor_radius);
 frame_keypoints = flipud(frame_keypoints);
 
+%% find matches in this frame
+if useAckermann_cndt %using Ackermann or not
+    [matches_candidate, theta_frame_hat, varTheta_frame] = matchDescriptorsAckermannConstrained(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, K, max_epipole_line_dist_cndt, max_match_dist_cndt);
+    theta_frame_hat = theta_frame_hat; %maybe not?? -> ackermann estimates theta around upward axis here Y is downward
+    fprintf('ACKERMAN: found theta_hat: %f deg\n',theta_frame_hat*180/pi);
+else
+    matches_candidate = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist, max_match_dist);
+end
+
 %% track established points
 
 %estimate new point with same homogenous transform as last transform
-H_W_prev2 = reshape(poses(:,end-1),4,4);
 H_W_prev = reshape(poses(:,end),4,4);
+H_W_prev2 = reshape(poses(:,end-1),4,4);
+if size(poses,2) > 2
+    H_W_prev3 = reshape(poses(:,end-2),4,4);
+else
+    H_W_prev3 = (H_W_prev2\H_W_prev)\H_W_prev2; %constant speed first frame =)
+end
 
-% Estimate translation
-w_t_prev2_prev = H_W_prev(1:3,4) - H_W_prev2(1:3,4); %last translation
-w_t_prev_C_est = [w_t_prev2_prev(1); 0; w_t_prev2_prev(3)]; % direction like last translation in z and x only
-t_prev_C_est = H_W_prev2(1:3,1:3)'*w_t_prev_C_est*norm(w_t_prev2_prev)/norm(w_t_prev_C_est); % magnitude like last tranlation
 
 % Estimate rotation
-R_prev2_prev = H_W_prev2(1:3,1:3)'*H_W_prev(1:3,1:3); %last rotation
-omega_hat_prev2_prev = logm(R_prev2_prev); %last skew
-theta_prev2_prev = norm(matrix2cross(omega_hat_prev2_prev)); %last angle of rotation
-omega_prev_C_est = H_W_prev2(1:3,1:3)'*[0; theta_prev2_prev; 0]; %rotation magnitude equal to last but limited to around y axis
-R_prev_C_est = expm(cross2matrix(omega_prev_C_est));
+if ~useAckermann_cndt
+    R_prev2_prev = H_W_prev2(1:3,1:3)'*H_W_prev(1:3,1:3); %last rotation
+    omega_hat_prev2_prev = logm(R_prev2_prev); %last skew
+    theta_prev2_prev = norm(matrix2cross(omega_hat_prev2_prev)); %last angle of rotation
+% =======!!!!!!!!!!!!!!!!! check direction of this!! prev2_prev or
+% prev_prev2 that is correct?? change sign in case the other...
+    theta_frame_hat = theta_prev2_prev*sign(omega_hat_prev2_prev(2)); 
+%     omega_prev_C_est = H_W_prev2(1:3,1:3)'*[0; theta_prev2_prev; 0]; %rotation magnitude equal to last but limited to around y axis
+%     R_prev_C_est = expm(cross2matrix(omega_prev_C_est));
+    fprintf('PREVIOUS FRAME: found theta: %f',theta_frame_hat);
+end
+R_prev_frame_hat = simpleRotY(theta_frame_hat);
+
+% Estimate translation
+% w_t_prev2_prev = H_W_prev(1:3,4) - H_W_prev2(1:3,4); %last translation
+% w_t_prev_C_est = [w_t_prev2_prev(1); 0; w_t_prev2_prev(3)]; % direction like last translation in z and x only
+% t_prev_C_est = H_W_prev2(1:3,1:3)'*w_t_prev_C_est*norm(w_t_prev2_prev)/norm(w_t_prev_C_est); % magnitude like last tranlation
+speed_prev = norm(H_W_prev(1:3,4) - H_W_prev2(1:3,4));
+speed_prev2 = norm(H_W_prev2(1:3,4) - H_W_prev3(1:3,4));
+accel_prev = speed_prev - speed_prev2;
+speed_frame_hat = speed_prev + 0.8*accel_prev; %estimate, not as much accel as last time for stability?
+t_prev_frame_hat = simpleRotY(theta_frame_hat/2)*[0; 0; speed_frame_hat];
+
 
 % Estimate homogenous transform
-H_prev_C_est = [R_prev_C_est, t_prev_C_est;
-                0, 0, 0, 1];
-H_W_C_est = H_W_prev*H_prev_C_est;
+H_prev_frame_hat = [R_prev_frame_hat, t_prev_frame_hat;
+                    0, 0, 0, 1];
+H_W_frame_hat = H_W_prev*H_prev_frame_hat;
 
 % Estimate location of landmark keypoints in the (estimated) current camera frame
-landmarks_C = H_W_C_est\landmarks_w;
+landmarks_C = H_W_frame_hat\landmarks_w;
 
 if use_KLT
     landmark_transforms(5:6,:) = projectPoints(landmarks_C(1:3,:), K);
@@ -116,8 +147,8 @@ if use_KLT
     fprintf('KLT: #landmarks tracked: %i, #landmarks lost: %i\n', sum(tracked_successfully_KLT > 0), sum(tracked_successfully_KLT == 0));
     
 else
-    matches = matchDescriptorsAckermannConstrained(landmark_descriptors, frame_descriptors, landmark_prev_keypoints, frame_keypoints, match_lambda_lndmrk,K,max_epipole_line_dist_lndmrk, max_match_dist_lndmrk);
-    fprintf('matching: #landmarks tracked: %i #landmarks lost: %i\n', sum(matches > 0), sum(matches == 0));
+    matches_lndmrk = matchDescriptorsAckermannConstrained(landmark_descriptors, frame_descriptors, landmark_prev_keypoints, frame_keypoints, match_lambda_lndmrk,K,max_epipole_line_dist_lndmrk, max_match_dist_lndmrk);
+    fprintf('matching: #landmarks tracked: %i #landmarks lost: %i\n', sum(matches_lndmrk > 0), sum(matches_lndmrk == 0));
 end
 
 %discard nonvalid tracks
@@ -144,7 +175,7 @@ if use_KLT
     frame_descriptors = frame_descriptors(:,isNew);
     
 else
-    [~, establishedInd, current_frame_idx] = find(matches);
+    [~, establishedInd, current_frame_idx] = find(matches_lndmrk);
     
     tracked_landmarks_frame_keypoints = frame_keypoints(:,current_frame_idx);
     tracked_landmarks_frame_descriptors = frame_descriptors(:,current_frame_idx);
@@ -194,12 +225,15 @@ H_WC = H_CW\eye(4);     % World to 1
 H_prev_C = H_W_prev\H_WC;
 
 %% Track candidate keypoints
-if true %using Ackermann or not
-    matches = matchDescriptorsAckermannConstrained(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, K, max_epipole_line_dist_cndt, max_match_dist_cndt);
+% (moved the matching...) should be enough to do it up there! fix removing
+% and shit!!
+if useAckermann_cndt %using Ackermann or not
+    [matches_candidate, theta_frame_hat, varTheta_frame] = matchDescriptorsAckermannConstrained(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, K, max_epipole_line_dist_cndt, max_match_dist_cndt);
+    %theta_frame_hat = -theta_frame_hat; %ackermann estimates theta around upward axis here Y is downward
 else
-    matches = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist, max_match_dist);
+    matches_candidate = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist, max_match_dist);
 end
-[~, prev_frame_idx, current_frame_idx] = find(matches);
+[~, prev_frame_idx, current_frame_idx] = find(matches_candidate);
 tracked_candidate_keypoints = frame_keypoints(:,current_frame_idx);
 tracked_candidate_descriptors = frame_descriptors(:,current_frame_idx);
 N_candidates_tracked = size(tracked_candidate_keypoints,2);
