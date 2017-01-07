@@ -36,12 +36,14 @@ descriptor_radius = 9;
 
 
 % Tuning parameters landmarks and pose estimation
-use_KLT = false;
-KLT_match = 0.001; %fraction of maximum patch distance
+use_KLT = true ;
+use_Ackermann_lndmrk = true;
+KLT_match = 0.001; %fraction of maximum patch distance^2
 match_lambda_lndmrk = 7;
 max_match_dist_lndmrk = 200;
-reprojection_pix_tol = 10;
-max_epipole_line_dist_lndmrk = 15;
+max_match_projected_dist = 40;
+reprojection_pix_tol = 15;
+max_epipole_line_dist_lndmrk = 30;
 
 % Tuning parameters candidate keypoints and triangulation
 useAckermann_cndt = true;
@@ -80,7 +82,7 @@ frame_keypoints = flipud(frame_keypoints);
 %% find matches in this frame
 if useAckermann_cndt %using Ackermann or not
     [matches_candidate, theta_frame_hat, varTheta_frame] = matchDescriptorsAckermannConstrained(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, K, max_epipole_line_dist_cndt, max_match_dist_cndt);
-    theta_frame_hat = theta_frame_hat; %maybe not?? -> ackermann estimates theta around upward axis here Y is downward
+    theta_frame_hat = -theta_frame_hat; %maybe not?? -> ackermann estimates theta around upward axis here Y is downward
     fprintf('ACKERMAN: found theta_hat: %f deg\n',theta_frame_hat*180/pi);
 else
     matches_candidate = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist, max_match_dist);
@@ -145,10 +147,12 @@ if use_KLT
     % Track landmarks using pyramid KLT
 	[transform_KLT, position_KLT, tracked_successfully_KLT] = KLTtracker(img, landmark_transforms, landmark_descriptors_reshaped, KLT_match);
     fprintf('KLT: #landmarks tracked: %i, #landmarks lost: %i\n', sum(tracked_successfully_KLT > 0), sum(tracked_successfully_KLT == 0));
-    
-else
+elseif use_Ackermann_lndmrk
     matches_lndmrk = matchDescriptorsAckermannConstrained(landmark_descriptors, frame_descriptors, landmark_prev_keypoints, frame_keypoints, match_lambda_lndmrk,K,max_epipole_line_dist_lndmrk, max_match_dist_lndmrk);
-    fprintf('matching: #landmarks tracked: %i #landmarks lost: %i\n', sum(matches_lndmrk > 0), sum(matches_lndmrk == 0));
+    fprintf('MATCHING: #landmarks tracked: %i #landmarks lost: %i\n', sum(matches_lndmrk > 0), sum(matches_lndmrk == 0));
+else
+    matches_lndmrk = matchDescriptorsLocally(landmark_descriptors, frame_descriptors, landmark_position_estimate, frame_keypoints, match_lambda_lndmrk, max_match_projected_dist);
+    fprintf('MATCHING: #landmarks tracked: %i #landmarks lost: %i\n', sum(matches_lndmrk > 0), sum(matches_lndmrk == 0));
 end
 
 %discard nonvalid tracks
@@ -237,7 +241,7 @@ end
 tracked_candidate_keypoints = frame_keypoints(:,current_frame_idx);
 tracked_candidate_descriptors = frame_descriptors(:,current_frame_idx);
 N_candidates_tracked = size(tracked_candidate_keypoints,2);
-
+fprintf('MATCHING: #candidates tracked: %i\n',N_candidates_tracked)
 %remove tracked candidate keypoints from set of new candidate keypoints -
 %old solution here
 %[~, newIndNon] = setdiff(frame_keypoints',tracked_candidate_keypoints','rows');
@@ -301,7 +305,10 @@ good_new_landmark = find(new_landmarks_C(3,:) > 0 & sqrt(sum(new_landmarks_C(1:3
 new_landmarks = new_landmarks(:,good_new_landmark);
 did_triangulate = can_triangulate(good_new_landmark);
 
-% Update landmarks
+fprintf('TRIANGULATION: #new landmarks: %i, #triangulated: %i, #too close: %i, #too far: %i\n',...
+    length(good_new_landmark), length(can_triangulate), sum(new_landmarks_C(3,:) < 0), sum(sqrt(sum(new_landmarks_C(1:3,:).^2,1)) > new_landmarks_distance_limit));
+
+% Update landmark
 tracked_landmarks = [tracked_landmarks, new_landmarks];
 tracked_landmarks_frame_keypoints = [tracked_landmarks_frame_keypoints, tracked_candidate_keypoints(:,did_triangulate)];
 tracked_landmarks_frame_descriptors = [tracked_landmarks_frame_descriptors, tracked_candidate_descriptors(:,did_triangulate)];
@@ -322,10 +329,11 @@ candidate_pose_idx_first = candidate_pose_idx_first(not_triangulated);
 % Validation plot new landmarks
 %set(0,'CurrentFigure',4);
 scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', cndtAx);
+title(['Tracked candidate keypoints from last frame, #tracked = ',num2str(N_candidates_tracked), ', #triangulated = ', num2str(length(can_triangulate)), ', #new landmarks ', num2str(size(new_landmarks,2))],'Parent',cndtAx);
+
 
 %set(0,'CurrentFigure',2);
 scatter(new_landmarks(3,:), -new_landmarks(1,:),'.r', 'Parent', mapAx);
-title(['Tracked candidate keypoints from last frame, #tracked = ',num2str(N_candidates_tracked), ', #triangulated = ', num2str(size(new_landmarks,2))],'Parent',cndtAx);
 axis(mapAx,'equal');
 
 %% Set return value and update state

@@ -12,7 +12,7 @@ function [T,S] = init(img0,img1,K)
     bundle_adjust = false;
     useAckerman = true;
     reprojection_error_tolerance = 10; %px
-    corner_distance_limit = 120; %px - shoudl be tuned for each set of start frames
+    corner_distance_limit = 150; %px - shoudl be tuned for each set of start frames
         
     %% Extract keypoints and correspondences using harris detector from ex3
     % Harris parameters
@@ -269,6 +269,13 @@ function [T,S] = init(img0,img1,K)
     state.candidate_pose_idx_1 = 2*ones(1,size(potential_keypoints,2));
     
     S = state;
+    
+    figure(2); hold on; ax2 = gca;
+    plotPoseXY(ax2, eye(4));
+    plotPoseXY(ax2, dummypose);
+    plotPoseXY(ax2, T);
+    scatter(P(3,:), -P(1,:),'.b', 'Parent', ax2);
+   	drawnow;
 end
 
 function [hidden_state,observations] = buildBAvectors(P,H1,H2,p1,p2) 
