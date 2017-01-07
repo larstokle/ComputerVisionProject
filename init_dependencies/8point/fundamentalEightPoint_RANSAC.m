@@ -28,7 +28,7 @@ function [F,inlier_mask] = fundamentalEightPoint_RANSAC(p1, p2, costFunction)
         num_inliers = nnz(inlier_mask);
         
         if num_inliers > max_num_inliers && num_inliers >= num_samples
-            if rerun_on_inliers
+            if false && rerun_on_inliers
                 
                 F_rerun = fundamentalEightPoint_normalized(p1(:,inlier_mask), p2(:,inlier_mask));
                 [err_rerun,inlier_mask_rerun] = costFunction(F,p1,p2);
@@ -56,6 +56,17 @@ function [F,inlier_mask] = fundamentalEightPoint_RANSAC(p1, p2, costFunction)
     end
     
     F = best_guess;
+    
+    if rerun_on_inliers
+        F_rerun = fundamentalEightPoint_normalized(p1(:,best_guess_inlier_mask), p2(:,best_guess_inlier_mask));
+        [err_rerun,inlier_mask_rerun] = costFunction(F,p1,p2);
+        
+        if nnz(inlier_mask_rerun) >= num_inliers
+            F = F_rerun;
+            best_guess_inlier_mask = inlier_mask_rerun;
+        end
+    end
+    
     inlier_mask = best_guess_inlier_mask;
 end
 

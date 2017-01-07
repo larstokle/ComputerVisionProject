@@ -10,13 +10,10 @@ function [T,S] = init(img0,img1,K)
     
     debug = false;
     bundle_adjust = false;
+    useAckerman = true;
     reprojection_error_tolerance = 10; %px
-    corner_distance_limit = 300; %px
-    
-    if debug
-       rng(1); 
-    end
-    
+    corner_distance_limit = 150; %px - shoudl be tuned for each set of start frames
+        
     %% Extract keypoints and correspondences using harris detector from ex3
     % Harris parameters
     harris_patch_size = 9;
@@ -38,11 +35,18 @@ function [T,S] = init(img0,img1,K)
     % (row,col) -> (x,y)
     corners0 = flipud(corners0);
     corners1 = flipud(corners1);
-        
-    matches = matchDescriptors(descriptors0, descriptors1, match_lambda);
-
-    [~, ind0, ind1] = find(matches);
-    [~, ~, ind1non] = find(matches == 0);
+            
+    
+    if useAckerman
+        matches = matchDescriptorsAckermannConstrained(descriptors0, descriptors1, corners0, corners1, match_lambda, K, 20, corner_distance_limit);
+        [~, ind0, ind1] = find(matches);
+        [~, ind0non, ind1non] = find(matches == 0);
+    else
+        % Argument order: query, db, match lambda
+        matches = matchDescriptors(descriptors1, descriptors0, match_lambda);
+        [~, ind1, ind0] = find(matches);
+        [~, ind1non, ind0non] = find(matches == 0);
+    end
 
     potential_keypoints = corners1(:,ind1non);
     potential_descriptors = descriptors1(:,ind1non);
@@ -52,25 +56,43 @@ function [T,S] = init(img0,img1,K)
     
     descriptors1 = descriptors1(:,ind1);
     
-    disp(['Num matches before distance filtering:' num2str(length(p0))])
+    if debug
+        disp(['Num matches before distance filtering:' num2str(length(p0))])
+    end
     
     % Filter matches with to large distance
-    acceptedMatchIdx = find(sum((p0 - p1).^2,1) < corner_distance_limit^2);
-    p0 = p0(:,acceptedMatchIdx);
-    p1 = p1(:,acceptedMatchIdx);
-    descriptors1 = descriptors1(:,acceptedMatchIdx);
+    within_distance_limit = find(sum((p0 - p1).^2,1) < corner_distance_limit^2);
     
-    p0 = [p0 ; ones(1,length(p0))];
-    p1 = [p1 ; ones(1,length(p1))];
+    p0 = homogenize2D(p0(:,within_distance_limit));
+    p1 = homogenize2D(p1(:,within_distance_limit));
+    descriptors1 = descriptors1(:,within_distance_limit);
     
     inlier_mask = (ones(1,length(p0))>0);
     
     disp(['Num matches after distance filtering:' num2str(length(p0))])
-        
-    iteration = 1;
+       
+    %% Debug plot start
+    if debug
+        figure(3);clf;
+
+        subplot(2,1,1);
+        imshow(img1); hold on;
+        plotMatches(matches, flipud(corners1), flipud(corners0));    
+        title('All matches');
+        hold off;
+
+        subplot(2,1,2);
+        imshow(img1); hold on;
+        plotMatchVectors(p0,p1);
+        title('Matches after distance filtering');
+        hold off;
+        pause(2);
+    end
+    %% Debug plot end
     
+    iteration = 1;    
     has_error = true;
-    
+
     while has_error
         p0 = p0(:,inlier_mask);
         p1 = p1(:,inlier_mask);
@@ -89,6 +111,25 @@ function [T,S] = init(img0,img1,K)
         p0 = p0(:,inlier_mask);
         p1 = p1(:,inlier_mask);
         descriptors1 = descriptors1(:,inlier_mask);
+        
+        %% Debug plot start
+        if debug
+            figure(3);clf;
+
+            subplot(2,1,1);
+            imshow(img1); hold on;
+            plotMatches(matches, flipud(corners1), flipud(corners0));    
+            title('All matches');
+            hold off;
+
+            subplot(2,1,2);
+            imshow(img1); hold on;
+            plotMatchVectors(p0,p1);
+            title(['Inlier matches after ransac iteration ' num2str(iteration)]);
+            hold off;
+            pause(2);
+        end
+        %% Debug plot end        
 
         % Obtain extrinsic parameters (R,t) from E
         [Rots,u3] = decomposeEssentialMatrix(E);
@@ -129,6 +170,8 @@ function [T,S] = init(img0,img1,K)
     p1 = p1(:,inlier_mask);
     descriptors1 = descriptors1(:,inlier_mask);
 
+    disp(max(sum((p0 - p1).^2,1)));
+    
     P = linearTriangulation(p0,p1,M0,M1);
         
     % Debug prior to BA
@@ -149,11 +192,11 @@ function [T,S] = init(img0,img1,K)
         pause(0.01);
     end
     
-    H0 = eye(4)^-1;
     H1 = [R_C1_W , T_C1_W ; 0 0 0 1]^-1; % From C1 to world, i.e. inverse of the 8-p-result
     
     %% Refine estimate using reprojection error
     if bundle_adjust
+       H0 = eye(4)^-1;
         
        [hidden_state, observations] = buildBAvectors(P,H0,H1,p0,p1);
        
@@ -214,23 +257,25 @@ function [T,S] = init(img0,img1,K)
     dummypose = [dummyRot(1:3,1:3) , T(1:3,4)./2 ; 0 0 0 1]; % Half the translation
     
     state.poses = [dummypose(:) , T(:)];
-    state.establishedKeypoints = p1(1:2,:);
-    state.establishedDescriptors = descriptors1;
-    state.establishedDescriptorsTransform = [zeros(4,size(state.establishedKeypoints,2)); state.establishedKeypoints];
+    state.landmark_keypoints = p1(1:2,:);
+    state.landmark_descriptors = descriptors1;
+    state.landmark_transforms = [zeros(4,size(state.landmark_keypoints,2)); state.landmark_keypoints];
     state.landmarks = P;
 
-    state.potentialKeypoints = potential_keypoints;
-    state.potentialDescriptors = potential_descriptors;
-    state.potentialBearingFirst = potentialBearing; % TODO: Test this
-    state.potentialKeypointsFirst = potential_keypoints;
-    state.potentialPoseIndFirst = 2*ones(1,size(potential_keypoints,2));
+    state.candidate_keypoints = potential_keypoints;
+    state.candidate_descriptors = potential_descriptors;
+    state.candidate_bearings_1 = potentialBearing; % TODO: Test this
+    state.candidate_keypoints_1 = potential_keypoints;
+    state.candidate_pose_idx_1 = 2*ones(1,size(potential_keypoints,2));
     
     S = state;
     
-    if debug
-       disp('Pausing after init')
-       pause() 
-    end
+    figure(2); hold on; ax2 = gca;
+    plotPoseXY(ax2, eye(4));
+    plotPoseXY(ax2, dummypose);
+    plotPoseXY(ax2, T);
+    scatter(P(3,:), -P(1,:),'.b', 'Parent', ax2);
+   	drawnow;
 end
 
 function [hidden_state,observations] = buildBAvectors(P,H1,H2,p1,p2) 
