@@ -1,4 +1,4 @@
-function matches = matchDescriptorsAckermannConstrained(...
+function [matches, theta, varTheta] = matchDescriptorsAckermannConstrained(...
     descriptors1, descriptors2, keypoints1, keypoints2,...
     lambda, K, max_epipole_line_dist, max_dist)
 %% matches = matchDescriptorsAckermannConstrained(...
@@ -43,7 +43,7 @@ end
 if max_epipole_line_dist ~= 0
     % find rotation transform
     [~, matchInd1, matchInd2] = find(matches);
-    theta = onePointHistogramVote(keypoints1(:,matchInd1), keypoints2(:,matchInd2), nBins, K);
+    [theta, varTheta] = onePointHistogramVote(keypoints1(:,matchInd1), keypoints2(:,matchInd2), nBins, K);
     
     % rotation from normal image coordinates (z straight ahead),
     % to normal world coordinates (z straight up)
