@@ -13,7 +13,7 @@ function matches = matchDescriptorsAckermannConstrained(...
 % with an SSD < lambda * min(SSD). No two non-zero elements of matches will
 % be equal.
 
-debug = true;
+debug = false;
 if debug
     tic
     fprintf('\n === matchDescriptorsAckermannConstrained started === \n');

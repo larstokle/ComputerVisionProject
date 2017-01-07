@@ -10,6 +10,7 @@ function [T,S] = init(img0,img1,K)
     
     debug = false;
     bundle_adjust = false;
+    useAckerman = true;
     reprojection_error_tolerance = 10; %px
     corner_distance_limit = 120; %px - shoudl be tuned for each set of start frames
         
@@ -35,11 +36,17 @@ function [T,S] = init(img0,img1,K)
     corners0 = flipud(corners0);
     corners1 = flipud(corners1);
             
-    % Argument order: query, db, match lambda
-    matches = matchDescriptors(descriptors1, descriptors0, match_lambda);
-
-    [~, ind1, ind0] = find(matches);
-    [~, ind1non, ind0non] = find(matches == 0);
+    
+    if useAckerman
+        matches = matchDescriptorsAckermannConstrained(descriptors0, descriptors1, corners0, corners1, match_lambda, K, 20, corner_distance_limit);
+        [~, ind0, ind1] = find(matches);
+        [~, ind0non, ind1non] = find(matches == 0);
+    else
+        % Argument order: query, db, match lambda
+        matches = matchDescriptors(descriptors1, descriptors0, match_lambda);
+        [~, ind1, ind0] = find(matches);
+        [~, ind1non, ind0non] = find(matches == 0);
+    end
 
     potential_keypoints = corners1(:,ind1non);
     potential_descriptors = descriptors1(:,ind1non);

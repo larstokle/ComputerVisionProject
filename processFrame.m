@@ -36,14 +36,15 @@ descriptor_radius = 9;
 % Tuning parameters landmarks and pose estimation
 use_KLT = true;
 KLT_match = 0.001; %fraction of maximum patch distance
-match_lambda_est = 12;
-pixel_motion_err_tol = 75;
+match_lambda_lndmrk = 7;
+max_match_dist_lndmrk = 200;
 reprojection_pix_tol = 10;
+max_epipole_line_dist_lndmrk = 15;
 
 % Tuning parameters candidate keypoints and triangulation
 match_lambda_candidates = 7;
-max_epipole_line_dist = 15;
-max_match_dist = 150;
+max_epipole_line_dist_cndt = 15;
+max_match_dist_cndt = 150;
 triangulationAngleThresh = 2*pi/180;
 triangulationCosThresh = cos(triangulationAngleThresh);
 new_landmarks_distance_limit = 60;
@@ -112,8 +113,11 @@ if use_KLT
     
     % Track landmarks using pyramid KLT
 	[transform_KLT, position_KLT, tracked_successfully_KLT] = KLTtracker(img, landmark_transforms, landmark_descriptors_reshaped, KLT_match);
+    fprintf('KLT: #landmarks tracked: %i, #landmarks lost: %i\n', sum(tracked_successfully_KLT > 0), sum(tracked_successfully_KLT == 0));
+    
 else
-    matches = matchDescriptorsEpiPolar(landmark_descriptors, frame_descriptors, landmark_position_estimate, frame_keypoints, match_lambda_est,[],[],0,pixel_motion_err_tol);
+    matches = matchDescriptorsAckermannConstrained(landmark_descriptors, frame_descriptors, landmark_prev_keypoints, frame_keypoints, match_lambda_lndmrk,K,max_epipole_line_dist_lndmrk, max_match_dist_lndmrk);
+    fprintf('matching: #landmarks tracked: %i #landmarks lost: %i\n', sum(matches > 0), sum(matches == 0));
 end
 
 %discard nonvalid tracks
@@ -148,13 +152,13 @@ else
     tracked_landmarks_prev_keypoints = landmark_prev_keypoints(:,establishedInd);
     tracked_landmarks = landmarks_w(:,establishedInd);
     
-    [~, isNew] = setdiff(...
-                round(frame_keypoints'/nonmaximum_supression_radius),...
-                round(tracked_landmarks_frame_keypoints'/nonmaximum_supression_radius),...
-                'rows');
+%     [~, isNew] = setdiff(...
+%                 round(frame_keypoints'/nonmaximum_supression_radius),...
+%                 round(tracked_landmarks_frame_keypoints'/nonmaximum_supression_radius),...
+%                 'rows');
 
-    frame_keypoints = frame_keypoints(:,isNew);
-    frame_descriptors = frame_descriptors(:,isNew);
+    frame_keypoints(:,current_frame_idx) = []; % = frame_keypoints(:,isNew);
+    frame_descriptors(:,current_frame_idx) = []; % = frame_descriptors(:,isNew);
 end
 
 % Validation plot landmark points
@@ -190,8 +194,11 @@ H_WC = H_CW\eye(4);     % World to 1
 H_prev_C = H_W_prev\H_WC;
 
 %% Track candidate keypoints
-matches = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist, max_match_dist);
-
+if true %using Ackermann or not
+    matches = matchDescriptorsAckermannConstrained(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, K, max_epipole_line_dist_cndt, max_match_dist_cndt);
+else
+    matches = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist, max_match_dist);
+end
 [~, prev_frame_idx, current_frame_idx] = find(matches);
 tracked_candidate_keypoints = frame_keypoints(:,current_frame_idx);
 tracked_candidate_descriptors = frame_descriptors(:,current_frame_idx);
