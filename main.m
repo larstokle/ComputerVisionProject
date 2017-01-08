@@ -41,22 +41,25 @@ end
 
 %% Bootstrap
 if ds == 0
-    if use_saved_bootstrap
-        load('other_data/bootstrap_kitti_pose');
-        load('other_data/bootstrap_kitti_state');
-    else
-        img0 = imread([kitti_path '/00/image_0/' ...
-            sprintf('%06d.png',bootstrap_frames(1))]);
-        img1 = imread([kitti_path '/00/image_0/' ...
-            sprintf('%06d.png',bootstrap_frames(2))]);
-
-        disp('Start kitti init');
-        [pose, state] = init(img0,img1,K);
-        disp('Kitti init finished');
-
-        save('other_data/bootstrap_kitti_pose','pose');
-        save('other_data/bootstrap_kitti_state','state');        
-     end
+    img1 = imread([kitti_path '/00/image_0/' sprintf('%06d.png',bootstrap_frames(2))]);
+    [pose, state] = oneP_init(img1);
+    
+%     if use_saved_bootstrap
+%         load('other_data/bootstrap_kitti_pose');
+%         load('other_data/bootstrap_kitti_state');
+%     else
+%         img0 = imread([kitti_path '/00/image_0/' ...
+%             sprintf('%06d.png',bootstrap_frames(1))]);
+%         img1 = imread([kitti_path '/00/image_0/' ...
+%             sprintf('%06d.png',bootstrap_frames(2))]);
+% 
+%         disp('Start kitti init');
+%         [pose, state] = init(img0,img1,K);
+%         disp('Kitti init finished');
+% 
+%         save('other_data/bootstrap_kitti_pose','pose');
+%         save('other_data/bootstrap_kitti_state','state');        
+%      end
     
 elseif ds == 1
     img0 = rgb2gray(imread([malaga_path ...

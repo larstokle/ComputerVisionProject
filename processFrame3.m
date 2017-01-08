@@ -9,6 +9,9 @@ addpath('continuous_dependencies/all_solns/05_ransac');
 addpath('continuous_dependencies/all_solns/07_LK_Tracker');
 addpath('continuous_dependencies/');
 
+%% Options
+do_plot = false;
+
 %% Extract variables from previous state
 poses = oldState.poses;
 N_frames = size(poses,2) + 1;
@@ -32,7 +35,7 @@ assert(size(candidate_descriptors,2)==num_candidate_keypoints);
 [img_keypoints, img_descriptors] = getHarrisFeatures(img);
 
 %% Match landmark keypoints and candidate keypoints from previous images with current image
-match_lambda = 5;
+match_lambda = 7;
 pixel_distance_limit = 200;
 
 % Stack all keypoints which we want to match
@@ -77,7 +80,6 @@ end
 % Replace newest candidate keypoint observation with the one from the
 % current image. Important to keep ordering here.
 candidate_keypoints_prev =  candidate_keypoints(:,has_match_candidate_keypoints);
-%candidate_descriptors_prev = candidate_descriptors(:,has_match_candidate_keypoints);
 candidate_keypoints(:,has_match_candidate_keypoints) = img_keypoints(:,corresponding_candidate_keypoints_idx);
 candidate_descriptors(:,has_match_candidate_keypoints) = img_descriptors(:,corresponding_candidate_keypoints_idx);
 
@@ -111,32 +113,45 @@ first_obs = [first_obs candidate_first_obs];
 %% Estimate pose
 
 % 1 point ransac here
-[theta_est,var_theta,inliers,H_C1_prev] = estimateTheta(landmark_keypoints_prev,landmark_keypoints,K,1);
+[theta_est,~,inliers,H_C1_prev] = estimateTheta(landmark_keypoints_prev,landmark_keypoints,K,1);
 
-disp(['Estimated theta: ' num2str(theta_est) ' num inliers' num2str(nnz(inliers)) ]);
+disp(['Estimated theta: ' num2str(theta_est)]);
+disp(['Num inliers: ' num2str(nnz(inliers)) ]);
 
-figure(11);
-subplot(1,3,[1 2]);
-imshow(img); hold on;
-plotMatchVectors(landmark_keypoints_prev(:,inliers==0),landmark_keypoints(:,inliers==0),'r');
-plotMatchVectors(landmark_keypoints_prev(:,inliers),landmark_keypoints(:,inliers),'g');
-title(['Tracked points. Num inliers=' num2str(nnz(inliers)) ' Num outliers=' num2str(nnz(inliers==0))]);
+if do_plot
 
-subplot(1,3,3);
-frames_in = sort(unique(first_obs(inliers)));
-freq_in = sum(first_obs(inliers) == frames_in',2);
-plot(frames_in,freq_in,'g-');
-hold on
-frames_out = sort(unique(first_obs(inliers==0)));
-freq_out = sum(first_obs(inliers==0) == frames_out',2);
-plot(frames_out,freq_out,'r-');
-xlim([min([frames_in,frames_out]) max([frames_in,frames_out])]);
-ylim([0 max([freq_in(:);freq_out(:)]')])
+    figure(11);
+    subplot(1,3,[1 2]);
+    imshow(img); hold on;
+    plotMatchVectors(landmark_keypoints_prev(:,inliers==0),landmark_keypoints(:,inliers==0),'r');
+    plotMatchVectors(landmark_keypoints_prev(:,inliers),landmark_keypoints(:,inliers),'g');
+    title(['Tracked points. Num inliers=' num2str(nnz(inliers)) ' Num outliers=' num2str(nnz(inliers==0))]);
 
-assert(nnz(inliers)==sum(freq_in));
-assert(nnz(inliers==0)==sum(freq_out));
-hold off;
-drawnow;
+    subplot(1,3,3);
+    frames_in = sort(unique(first_obs(inliers)));
+    freq_in = sum(first_obs(inliers) == frames_in',2);
+    plot(frames_in,freq_in,'g-');
+    hold on
+    frames_out = sort(unique(first_obs(inliers==0)));
+    freq_out = sum(first_obs(inliers==0) == frames_out',2);
+    plot(frames_out,freq_out,'r-');
+
+    % Guard. If min==max matlab complains
+    if (min([frames_in,frames_out])-max([frames_in,frames_out]))>0
+        xlim([min([frames_in,frames_out]) max([frames_in,frames_out])]);
+    end
+
+    % Guard. If 0==max matlab complains
+    if max([freq_in(:);freq_out(:)]')>0
+        ylim([0 max([freq_in(:);freq_out(:)]')])
+    end
+
+    assert(nnz(inliers)==sum(freq_in));
+    assert(nnz(inliers==0)==sum(freq_out));
+    hold off;
+    drawnow;
+
+end
 
 % Remove outliers
 landmark_keypoints = landmark_keypoints(:,inliers);
@@ -148,6 +163,8 @@ first_obs = first_obs(:,inliers);
 num_inliers = nnz(inliers);
 
 if num_inliers >= 8
+    %% Estimate essential matrix with normalized 8-p-algorithm
+    
     p1_hom = homogenize2D(landmark_keypoints_prev);
     p2_hom = homogenize2D(landmark_keypoints);
     
