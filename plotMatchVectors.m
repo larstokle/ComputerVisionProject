@@ -1,6 +1,9 @@
-function plotMatchVectors(p1,p2)
+function plotMatchVectors(p1,p2,lineSpec)
     % P2 is query kp - i.e new image
     % P1 is db  kp - i.e old image
+    if ~exist('lineSpec','var') || isempty(lineSpec)
+        lineSpec='g-';
+    end
     
     dim = size(p1,1);
     
@@ -22,5 +25,5 @@ function plotMatchVectors(p1,p2)
     x_to = p1(1,:); % DB kp
     y_from = p2(2,:); % Query kp
     y_to = p1(2,:); % DB kp
-    plot([y_from; y_to], [x_from; x_to], 'g-', 'Linewidth', 3)
+    quiver(y_from,x_from,y_to-y_from,x_to-x_from,0, lineSpec, 'Linewidth', 2)
 end

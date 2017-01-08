@@ -17,25 +17,19 @@ pixel_tolerance_localization = 10;
 poses = oldState.poses;
 N_frames = size(poses,2) + 1;
 
-landmarks = oldState.landmarks;
 landmark_keypoints = oldState.landmark_keypoints;
 landmark_descriptors = oldState.landmark_descriptors;
+first_obs = oldState.first_obs; % Frame of the first observation of the landmark
 num_landmarks = size(landmark_keypoints,2);
 
 candidate_keypoints = oldState.candidate_keypoints;
 candidate_descriptors = oldState.candidate_descriptors;
-candidate_bearing_1 = oldState.candidate_bearings_1;
-candidate_keypoints_1 = oldState.candidate_keypoints_1;
-candidate_T_idx_1 = oldState.candidate_pose_idx_1;
 num_candidates = size(candidate_keypoints, 2);
 
 %% Size test start %%
 num_candidate_keypoints = size(candidate_keypoints,2);
 assert(size(candidate_keypoints,2)==num_candidate_keypoints);
 assert(size(candidate_descriptors,2)==num_candidate_keypoints);
-assert(size(candidate_bearing_1,2)==num_candidate_keypoints);
-assert(size(candidate_keypoints_1,2)==num_candidate_keypoints);
-assert(size(candidate_T_idx_1,2)==num_candidate_keypoints);
 %% Size test end %%
 
 %% Get keypoints and descriptors in current image
@@ -46,7 +40,7 @@ match_lambda = 5;
 pixel_distance_limit = 200;
 
 % Stack all keypoints which we want to match
-prev_keypoints = [landmark_keypoints, candidate_keypoints_1];
+prev_keypoints = [landmark_keypoints, candidate_keypoints];
 prev_descriptors = [landmark_descriptors, candidate_descriptors];
 has_match = zeros(1,num_landmarks + num_candidates)';
 corresponding_keypoints = zeros(1,num_landmarks + num_candidates)';
@@ -60,16 +54,9 @@ corresponding_keypoints = zeros(1,num_landmarks + num_candidates)';
 matches = matchDescriptorsLocally(img_descriptors,prev_descriptors,img_keypoints,prev_keypoints,match_lambda,pixel_distance_limit);
 
 [~, idx_matched_img, idx_matched_prev] = find(matches);
-%[~, idx_img_no_match, ~] = find(matches==0);
+%[~, idx_img_no_match,idx_prev_no_match] = find(matches==0);
 
-fprintf('Number of keypoints matched: %i\n',nnz(idx_matched_img));
-
-figure(10);
-imshow(img); hold on;
-plotMatches(matches, flipud(img_keypoints), flipud(prev_keypoints));
-title('Tracked keypoints')
-hold off;
-pause(1);    
+fprintf('Number of keypoints matched: %i\n',nnz(idx_matched_img));  
 
 has_match(idx_matched_prev) = 1;
 corresponding_keypoints(idx_matched_prev) = idx_matched_img;
@@ -93,148 +80,120 @@ end
 
 % Replace newest candidate keypoint observation with the one from the
 % current image. Important to keep ordering here.
+candidate_keypoints_prev =  candidate_keypoints(:,has_match_candidate_keypoints);
+candidate_descriptors_prev = candidate_descriptors(:,has_match_candidate_keypoints);
 candidate_keypoints(:,has_match_candidate_keypoints) = img_keypoints(:,corresponding_candidate_keypoints_idx);
 candidate_descriptors(:,has_match_candidate_keypoints) = img_descriptors(:,corresponding_candidate_keypoints_idx);
 
 % Keep only landmarks we were able to track
+landmark_keypoints_prev = landmark_keypoints(:,has_match_landmarks);
+landmark_descriptors_prev = landmark_descriptors(:,has_match_landmarks);
+
 landmark_keypoints = img_keypoints(:,corresponding_landmark_keypoint_idx);
 landmark_descriptors = img_descriptors(:,corresponding_landmark_keypoint_idx);
-landmarks = landmarks(:,has_match_landmarks);
+first_obs = first_obs(:,has_match_landmarks);
 
 fprintf('Number of landmarks matched: %i\n',nnz(has_match_landmarks));
 
 % Keep only keypoints we were able to track
 candidate_keypoints = candidate_keypoints(:,has_match_candidate_keypoints);
 candidate_descriptors = candidate_descriptors(:,has_match_candidate_keypoints);
-candidate_bearing_1 = candidate_bearing_1(:,has_match_candidate_keypoints);
-candidate_keypoints_1 = candidate_keypoints_1(:,has_match_candidate_keypoints);
-candidate_T_idx_1 = candidate_T_idx_1(:,has_match_candidate_keypoints);
+candidate_first_obs = (N_frames-1)*ones(1,size(candidate_keypoints,2));
 
 %% Size test start %%
 num_candidate_keypoints = size(candidate_keypoints,2);
 assert(size(candidate_keypoints,2)==num_candidate_keypoints);
 assert(size(candidate_descriptors,2)==num_candidate_keypoints);
-assert(size(candidate_bearing_1,2)==num_candidate_keypoints);
-assert(size(candidate_keypoints_1,2)==num_candidate_keypoints);
-assert(size(candidate_T_idx_1,2)==num_candidate_keypoints);
+assert(size(candidate_first_obs,2)==num_candidate_keypoints);
 %% Size test end %%
 
-%% Estimate relative pose
+%% Augment landmarks
+landmark_keypoints_prev = [landmark_keypoints_prev candidate_keypoints_prev];
+landmark_keypoints = [landmark_keypoints candidate_keypoints];
+landmark_descriptors = [landmark_descriptors candidate_descriptors];
+first_obs = [first_obs candidate_first_obs];
 
-[H_C_W, inliers] = ransacLocalization(landmark_keypoints, landmarks, K,pixel_tolerance_localization);
-fprintf('Number of inliers found: %i\n',sum(inliers));
+%% Estimate pose
 
-% Remove outlier landmark-keypoint-correspondences
-landmark_keypoints = landmark_keypoints(:,inliers);
-landmark_descriptors = landmark_descriptors(:,inliers);
-landmarks = landmarks(:,inliers);
+% 1 point ransac here
+[theta_est,var_theta,inliers] = estimateTheta(landmark_keypoints_prev,landmark_keypoints,K,1);
 
-% Compute homogenous transform
-H_W_C = H_C_W\eye(4);     % frame World to 1
+disp(['Estimated theta: ' num2str(theta_est) ' num inliers' num2str(nnz(inliers)) ]);
 
-% New candidate keypoint set from current image - updated here since transform
-% from RANSASC is needed in bearing vector calculation. Important: These
-% are candidate keypoints where the track starts in the current image. I.e.
-% NOT candidate keypoints tracked from previous images
-new_candidate_keypoints = img_keypoints(:,matches == 0);
-new_candidate_descriptors = img_descriptors(:,matches == 0);
-new_candidate_bearing_vectors = calculateBearingVectors(new_candidate_keypoints,H_W_C,K);
+figure(11);
+subplot(1,3,[1 2]);
+imshow(img); hold on;
+plotMatchVectors(landmark_keypoints_prev(:,inliers==0),landmark_keypoints(:,inliers==0),'r');
+plotMatchVectors(landmark_keypoints_prev(:,inliers),landmark_keypoints(:,inliers),'g');
+title(['Tracked points. Num inliers=' num2str(nnz(inliers)) ' Num outliers=' num2str(nnz(inliers==0))]);
 
-%% Size test start %%
-num_candidate_keypoints = size(candidate_keypoints,2);
-assert(size(candidate_keypoints,2)==num_candidate_keypoints);
-assert(size(candidate_descriptors,2)==num_candidate_keypoints);
-assert(size(candidate_bearing_1,2)==num_candidate_keypoints);
-assert(size(candidate_keypoints_1,2)==num_candidate_keypoints);
-assert(size(candidate_T_idx_1,2)==num_candidate_keypoints);
-%% Size test end %%
+subplot(1,3,3);
+frames_in = sort(unique(first_obs(inliers)));
+freq_in = sum(first_obs(inliers) == frames_in',2);
+plot(frames_in,freq_in,'g-');
+hold on
+frames_out = sort(unique(first_obs(inliers==0)));
+freq_out = sum(first_obs(inliers==0) == frames_out',2);
+plot(frames_out,freq_out,'r-');
+xlim([min([frames_in,frames_out]) max([frames_in,frames_out])]);
+ylim([0 max([freq_in(:);freq_out(:)]')])
 
-%% Triangulate new Landmarks
+assert(nnz(inliers)==sum(freq_in));
+assert(nnz(inliers==0)==sum(freq_out));
+hold off;
+drawnow;
 
-% Calculate bearing vector for observation in current image
-candidate_bearing_2 = calculateBearingVectors(candidate_keypoints,H_W_C,K);
+% Relative pose via fundamental matrix estimation
+num_inliers = nnz(inliers);
 
-% Triangulability test. The angle between the bearing vectors must be large
-% enough. innerProd = cos(angle)... ==> low innerProd = large angle
-can_triangulate = find(sum(candidate_bearing_1.*candidate_bearing_2,1) < 1);
-
-p1 = candidate_keypoints_1(:,can_triangulate);
-p1_poses_ind = candidate_T_idx_1(can_triangulate);
-p2 = candidate_keypoints(:,can_triangulate);
-
-p1 = homogenize2D(p1);
-p2 = homogenize2D(p2);
-
-assert(all(size(p1)==size(p2)));
-
-M2 = K*H_C_W(1:3,:); % Projection matrix for current image (image 2)
-
-% Triangulate landmarks one by one, since they may have different poses
-candidate_landmarks_W = zeros(4,size(p2,2));
-
-for i= 1:size(p2,2)
-    % Projection matrix for image 1, M1, varies for all keypoints
-    H_iW = reshape(poses(:,p1_poses_ind(i)),4,4)\eye(4);
-    M1 = K*H_iW(1:3,:);
-    candidate_landmarks_W(:,i) = linearTriangulation(p1(:,i), p2(:,i), M1, M2);
+if num_inliers >= 8
+    % 8 point
+elseif num_inliers >= 2
+    % 2 point
+elseif num_inliers == 1
+    % 1 point - or perhaps not..
+else
+    % Run init again or other fallback. Such as using previous estimate.
 end
 
-% Find triangulated points in front of camera and closer than a threshold
-candidate_landmarks_C = H_C_W*candidate_landmarks_W;
-posZInds = (candidate_landmarks_C(3,:) > 0 & sqrt(sum(candidate_landmarks_C(1:3,:).^2,1)) < 6000);
-new_landmarks = candidate_landmarks_W(:,posZInds);
-did_triangulate = can_triangulate(posZInds);
+% Fix scale by using correspondences which go further back than one frame
+    
+%% Candidate keypoints from this frame
+new_candidate_keypoints = img_keypoints(:,matches == 0);
+new_candidate_descriptors = img_descriptors(:,matches == 0);
 
-fprintf('Num landmarks triangulated: %i\n',nnz(did_triangulate));
-
-% Update landmarks
-landmarks = [landmarks, new_landmarks];
-landmark_keypoints = [landmark_keypoints, candidate_keypoints(:,did_triangulate)];
-landmark_descriptors = [landmark_descriptors, candidate_descriptors(:,did_triangulate)];
-
-% Remove new landmark keypoints from candidate keypoints
-candidate_keypoints(:,did_triangulate) = [];
-candidate_descriptors(:,did_triangulate) = [];
-candidate_bearing_1(:,did_triangulate) = [];
-candidate_keypoints_1(:,did_triangulate) = [];
-candidate_T_idx_1(:,did_triangulate) = [];
+%% Size test start %%
+num_candidate_keypoints = size(candidate_keypoints,2);
+assert(size(candidate_keypoints,2)==num_candidate_keypoints);
+assert(size(candidate_descriptors,2)==num_candidate_keypoints);
+%% Size test end %%
 
 %% Update candidates with keypoints from current image
-candidate_keypoints = [candidate_keypoints new_candidate_keypoints];
-candidate_descriptors = [candidate_descriptors new_candidate_descriptors];
-candidate_bearing_1 = [candidate_bearing_1 new_candidate_bearing_vectors];
-candidate_keypoints_1 = [candidate_keypoints_1 new_candidate_keypoints];
-candidate_T_idx_1 = [candidate_T_idx_1 N_frames*ones(1,size(new_candidate_keypoints,2))];
+candidate_keypoints = new_candidate_keypoints;
+candidate_descriptors = new_candidate_descriptors;
 
 %% Update poses
-pose = H_W_C; 
+pose = eye(4); 
 poses = [poses pose(:)];
 
 %% Set new state
 state.poses = poses;
 state.landmark_keypoints = landmark_keypoints;
 state.landmark_descriptors = landmark_descriptors;
-state.landmark_transforms = [];
-state.landmarks = landmarks;
+state.first_obs = first_obs;
 
 state.candidate_keypoints = candidate_keypoints;
 state.candidate_descriptors = candidate_descriptors;
-state.candidate_bearings_1 = candidate_bearing_1;
-state.candidate_keypoints_1 = candidate_keypoints_1;
-state.candidate_pose_idx_1 = candidate_T_idx_1;
 
 %% Assertions
 num_landmarks = size(landmark_keypoints,2);
 assert(size(landmark_keypoints,2)==num_landmarks);
 assert(size(landmark_descriptors,2)==num_landmarks);
-assert(size(landmarks,2)==num_landmarks);
+assert(size(first_obs,2)==num_landmarks);
 
 num_candidate_keypoints = size(candidate_keypoints,2);
 assert(size(candidate_keypoints,2)==num_candidate_keypoints);
 assert(size(candidate_descriptors,2)==num_candidate_keypoints);
-assert(size(candidate_bearing_1,2)==num_candidate_keypoints);
-assert(size(candidate_keypoints_1,2)==num_candidate_keypoints);
-assert(size(candidate_T_idx_1,2)==num_candidate_keypoints);
 
 assert(size(poses,2)==N_frames);
 

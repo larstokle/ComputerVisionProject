@@ -261,6 +261,7 @@ function [T,S] = init(img0,img1,K)
     state.landmark_descriptors = descriptors1;
     state.landmark_transforms = [zeros(4,size(state.landmark_keypoints,2)); state.landmark_keypoints];
     state.landmarks = P;
+    state.first_obs = 1*ones(1,size(state.landmark_keypoints,2));
 
     state.candidate_keypoints = potential_keypoints;
     state.candidate_descriptors = potential_descriptors;

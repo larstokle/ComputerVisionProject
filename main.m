@@ -1,9 +1,3 @@
-%% Setup
-figure(2); clf; ax2 = gca; hold(ax2,'on');
-figure(3); clf; ax3 = gca;
-figure(4); clf; ax4 = gca;
-figure(5); clf; ax5 = gca; hold(ax5,'on');
-
 local_setup;
 addpath('continuous_dependencies/');
 use_saved_bootstrap = true;
@@ -100,33 +94,11 @@ for i = range
     end
     
     tic;
-    [pose, state] = processFrame2(image, K, pose, state);
+    [pose, state] = processFrame3(image, K, pose, state);
     %state = tracker(image,state);
     toc;
     
-    plotPoseXY(ax2,pose);
-    plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
-   	drawnow;
-    %pause;
     prev_img = image;
 end
 
 %% aftermath
-
-% plotting of the rotation
-figure(6);clf;
-omegas = reshape(state.poses,[4,4,size(state.poses,2)]);
-omegas = omegas(1:3,1:3,:);
-for i = 1:size(state.poses,2)
-omgegas(:,:,i) = logm(omegas(:,:,i));
-end
-tvist = [];
-for i = 1:size(state.poses,2)
-temp = omegas(:,:,i);tvist(:,i) = temp([6,7,2]);
-end
-plot(tvist(1,:))
-hold on
-plot(tvist(2,:))
-plot(tvist(3,:))
-legend('X','Y','Z');
-title('rotation vector coords');

@@ -1,8 +1,8 @@
 function state = tracker(image,prev_state)
     
     %Unwrap state
-    prev_keypoints = prev_state.establishedKeypoints;
-    prev_descriptors = prev_state.establishedDescriptors;
+    prev_keypoints = prev_state.landmark_keypoints;
+    prev_descriptors = prev_state.landmark_descriptors;
     prev_landmarks = prev_state.landmarks;
     
     prev_keypoints = flipud(prev_keypoints);
@@ -16,8 +16,8 @@ function state = tracker(image,prev_state)
     disp(['Num tracked: ' num2str(N)]);
        
     % Set new state
-    state.establishedKeypoints = keypoints;
-    state.establishedDescriptors = descriptors;
+    state.landmark_keypoints = keypoints;
+    state.landmark_descriptors = descriptors;
     state.landmarks = prev_landmarks(:,idx_of_tracked);
     
     assert(size(keypoints,2)==N);
