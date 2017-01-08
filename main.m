@@ -7,11 +7,12 @@ figure(5); clf; ax5 = gca; hold(ax5,'on');
 local_setup;
 addpath('continuous_dependencies/');
 use_saved_bootstrap = false;
+use_stereo = true;
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
 if ds == 0
-    bootstrap_frames = [85 150];
+    bootstrap_frames = [85 87];
     baseline = 0.54;
     % need to set kitti_path to folder containing "00" and "poses"
     assert(exist('kitti_path', 'var') ~= 0);
@@ -52,27 +53,20 @@ if ds == 0
         load('other_data/bootstrap_kitti_state');
     else
         
-        for i = bootstrap_frames(1):bootstrap_frames(2)
-            bootstrap_img_l(:,:,i-bootstrap_frames(1)+1) = imread([kitti_path '/00/image_0/' ...
-                sprintf('%06d.png',i)]);
-            bootstrap_img_r(:,:,i-bootstrap_frames(1)+1) = imread([kitti_path '/00/image_1/' ...
-                sprintf('%06d.png',i)]);
-        end
+        img0 = imread([kitti_path '/00/image_0/' ...
+            sprintf('%06d.png',bootstrap_frames(1))]);
+        img1 = imread([kitti_path '/00/image_0/' ...
+            sprintf('%06d.png',bootstrap_frames(2))]);
         
-        img0 = bootstrap_img_l(:,:,1);
-        img1 = bootstrap_img_r(:,:,end);
-%         img0 = imread([kitti_path '/00/image_0/' ...
-%             sprintf('%06d.png',bootstrap_frames(1))]);
-%         img1 = imread([kitti_path '/00/image_0/' ...
-%             sprintf('%06d.png',bootstrap_frames(2))]);
-        
-        %% init
-        disp('Start kitti init');
-        [pose, state] = init(img0,img1,K);
-        disp('Kitti init finished');
+        if ~use_stereo
+            %% init
+            disp('Start kitti init');
+            [pose, state] = init(img0,img1,K);
+            disp('Kitti init finished');
 
-        save('other_data/bootstrap_kitti_pose','pose');
-        save('other_data/bootstrap_kitti_state','state');        
+            save('other_data/bootstrap_kitti_pose','pose');
+            save('other_data/bootstrap_kitti_state','state');    
+        end
      end
     
 elseif ds == 1
@@ -91,6 +85,17 @@ else
     assert(false);
 end
 
+state = [];
+if use_stereo
+    for i = bootstrap_frames(1):bootstrap_frames(2)
+        img_l = imread([kitti_path '/00/image_0/' ...
+            sprintf('%06d.png',i)]);
+        img_r = imread([kitti_path '/00/image_1/' ...
+            sprintf('%06d.png',i)]);
+        [pose,state] = processStereo(img_l, img_r, K, baseline, state);
+    end
+end
+
 
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
@@ -99,10 +104,14 @@ for i = range
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
     if ds == 0
         image = imread([kitti_path '/00/image_0/' sprintf('%06d.png',i)]);
+        if use_stereo
+           image_r = imread([kitti_path '/00/image_1/' sprintf('%06d.png',i)]);
+        end
     elseif ds == 1
         image = rgb2gray(imread([malaga_path ...
             '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
             left_images(i).name]));
+         
     elseif ds == 2
         image = im2uint8(rgb2gray(imread([parking_path ...
             sprintf('/images/img_%05d.png',i)])));
@@ -111,14 +120,18 @@ for i = range
     end
     
     tic;
-    [pose, state] = processFrame(image, K, pose, state);
-    toc;
-    
-    plotPoseXY(ax2,pose);
-    plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
-   	drawnow;
-    %pause;
-    prev_img = image;
+    if use_stereo
+        [pose, state] = processStereo(image, image_r, K, baseline, state);
+    else
+        [pose, state] = processFrame(image, K, pose, state);
+        toc;
+
+        plotPoseXY(ax2,pose);
+        plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
+        drawnow;
+        %pause;
+        prev_img = image;
+    end
 end
 
 %% aftermath
