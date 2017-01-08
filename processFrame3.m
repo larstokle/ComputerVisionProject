@@ -1,4 +1,4 @@
-function [pose, state] = processFrame2(img, K, H_W_prev, oldState)
+function [pose, state] = processFrame3(img, K, H_W_prev, oldState)
         
 %% Dependencies
 addpath('init_dependencies/8point/');
@@ -36,7 +36,7 @@ assert(size(candidate_descriptors,2)==num_candidate_keypoints);
 [img_keypoints, img_descriptors] = getHarrisFeatures(img);
 
 %% Match landmark keypoints and candidate keypoints from previous images with current image
-match_lambda = 7;
+match_lambda = 5;
 pixel_distance_limit = 200;
 
 % Stack all keypoints which we want to match
@@ -209,18 +209,17 @@ if do_plot
 
 end
 
+%% Candidate keypoints from this frame
+% Note: Outlier landmark keypoints can still be re-used as keypoints from
+% this frame
+new_candidate_keypoints = [img_keypoints(:,matches == 0) landmark_keypoints(:,inliers==0)];
+new_candidate_descriptors = [img_descriptors(:,matches == 0) landmark_descriptors(:,inliers==0)];
+
 % Remove outliers
 landmark_keypoints = landmark_keypoints(:,inliers);
 landmark_keypoints_prev = landmark_keypoints_prev(:,inliers);
 landmark_descriptors = landmark_descriptors(:,inliers);
 first_obs = first_obs(:,inliers);
-
-%% Fix scale by using correspondences which go further back than one frame
-% TODO  
-
-%% Candidate keypoints from this frame
-new_candidate_keypoints = img_keypoints(:,matches == 0);
-new_candidate_descriptors = img_descriptors(:,matches == 0);
 
 %% Size test start %%
 num_candidate_keypoints = size(candidate_keypoints,2);
@@ -258,6 +257,7 @@ assert(size(first_obs,2)==num_landmarks);
 num_candidate_keypoints = size(candidate_keypoints,2);
 assert(size(candidate_keypoints,2)==num_candidate_keypoints);
 assert(size(candidate_descriptors,2)==num_candidate_keypoints);
+
 
 assert(size(poses,2)==N_frames);
 
