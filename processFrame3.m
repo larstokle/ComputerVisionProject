@@ -1,6 +1,7 @@
 function [pose, state] = processFrame2(img, K, H_W_prev, oldState)
         
 %% Dependencies
+addpath('init_dependencies/8point/');
 addpath('continuous_dependencies/all_solns/00_camera_projection');
 addpath('continuous_dependencies/all_solns/01_pnp');
 addpath('continuous_dependencies/all_solns/02_detect_describe_match');
@@ -115,8 +116,63 @@ first_obs = [first_obs candidate_first_obs];
 % 1 point ransac here
 [theta_est,~,inliers,H_C1_prev] = estimateTheta(landmark_keypoints_prev,landmark_keypoints,K,1);
 
-disp(['Estimated theta: ' num2str(theta_est)]);
-disp(['Num inliers: ' num2str(nnz(inliers)) ]);
+disp(['Estimated theta: ' num2str(rad2deg(theta_est))]);
+disp(['Num inliers 1p: ' num2str(nnz(inliers)) ]);
+
+% Relative pose via fundamental matrix estimation
+num_inliers = nnz(inliers);
+
+if num_inliers >= 20 && abs(rad2deg(theta_est)) <= 10
+    %% Estimate essential matrix with normalized 8-p-algorithm
+    p1_hom = homogenize2D(landmark_keypoints_prev(:,inliers));
+    p2_hom = homogenize2D(landmark_keypoints(:,inliers));
+    
+    % User normalized 8-p-a to estimate essential matrix
+    E = estimateEssentialMatrix(p1_hom,p2_hom,K,K);
+    
+    % Obtain extrinsic parameters (R,t) from E
+    [Rots,u3] = decomposeEssentialMatrix(E);
+    
+    % Disambiguate among the four possible configurations
+    [R_C1_prev,T_C1_prev] = disambiguateRelativePose(Rots,u3,p1_hom,p2_hom,K,K);
+    H_C1_prev = [R_C1_prev , T_C1_prev ; 0 0 0 1];    
+    
+elseif num_inliers >= 8
+    disp('Starting 8 point fundamental matrix estimation')
+    beep
+    
+    %% Check if we find more inliers using 8-p-ransac
+    p1_hom = homogenize2D(landmark_keypoints_prev);
+    p2_hom = homogenize2D(landmark_keypoints);
+    
+    epsilon = num_inliers / numel(inliers);
+    p = 0.90;
+    num_iter_8p_RANSAC = log(1-p)/log(1-epsilon^8);
+    num_iter_8p_RANSAC = min([num_iter_8p_RANSAC 10000]);
+    num_iter_8p_RANSAC = max([num_iter_8p_RANSAC 1000]);
+    
+    [E,eightp_inlier_mask] = estimateEssentialMatrix_RANSAC(p1_hom,p2_hom,K,K,num_iter_8p_RANSAC);
+    
+    disp('Terminating 8 point fundamental matrix estimation')
+    
+    if nnz(eightp_inlier_mask) > 0
+        % Obtain extrinsic parameters (R,t) from E
+        [Rots,u3] = decomposeEssentialMatrix(E);
+
+        % Disambiguate among the four possible configurations
+        [R_C1_prev,T_C1_prev] = disambiguateRelativePose(Rots,u3,p1_hom,p2_hom,K,K);
+        H_C1_prev = [R_C1_prev , T_C1_prev ; 0 0 0 1];           
+        
+        inliers = eightp_inlier_mask;
+        disp(['Num inliers 8p: ' num2str(nnz(inliers)) ]);
+    end
+    
+elseif num_inliers == 1
+    % 1 point - i.e. keep what is goin on
+else
+    % Run init again or other fallback. Such as using previous estimate.
+end
+
 
 if do_plot
 
@@ -159,35 +215,9 @@ landmark_keypoints_prev = landmark_keypoints_prev(:,inliers);
 landmark_descriptors = landmark_descriptors(:,inliers);
 first_obs = first_obs(:,inliers);
 
-% Relative pose via fundamental matrix estimation
-num_inliers = nnz(inliers);
+%% Fix scale by using correspondences which go further back than one frame
+% TODO  
 
-if num_inliers >= 8
-    %% Estimate essential matrix with normalized 8-p-algorithm
-    
-    p1_hom = homogenize2D(landmark_keypoints_prev);
-    p2_hom = homogenize2D(landmark_keypoints);
-    
-    % User normalized 8-p-a to estimate essential matrix
-    E = estimateEssentialMatrix(p1_hom,p2_hom,K,K);
-    
-    % Obtain extrinsic parameters (R,t) from E
-    [Rots,u3] = decomposeEssentialMatrix(E);
-    
-    % Disambiguate among the four possible configurations
-    [R_C1_prev,T_C1_prev] = disambiguateRelativePose(Rots,u3,p1_hom,p2_hom,K,K);
-    H_C1_prev = [R_C1_prev , T_C1_prev ; 0 0 0 1];    
-    
-elseif num_inliers >= 2
-    % 2 point - if time to implement it.
-elseif num_inliers == 1
-    % 1 point - i.e. keep what is goin on
-else
-    % Run init again or other fallback. Such as using previous estimate.
-end
-
-% Fix scale by using correspondences which go further back than one frame
-    
 %% Candidate keypoints from this frame
 new_candidate_keypoints = img_keypoints(:,matches == 0);
 new_candidate_descriptors = img_descriptors(:,matches == 0);

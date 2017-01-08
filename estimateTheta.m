@@ -24,7 +24,7 @@ p2 = normc(p2);
 
 theta = -2*atan((p2(2,:).*p1(3,:) - p1(2,:).*p2(3,:))./(p2(1,:).*p1(3,:) + p1(1,:).*p2(3,:)));
 var_theta = var(theta);
-theta_est = median(theta);
+theta_est = median(theta); % If above 10 degrees -> decreased inlier detection rate
 
 if nargout >= 3
     E = [0, 0, sin(theta_est/2);

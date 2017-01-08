@@ -5,7 +5,7 @@ use_saved_bootstrap = false;
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
 if ds == 0
-    bootstrap_frames = [1 3];
+    bootstrap_frames = [1 148];
     
     % need to set kitti_path to folder containing "00" and "poses"
     assert(exist('kitti_path', 'var') ~= 0);

@@ -1,11 +1,11 @@
-function [F,inlier_mask] = fundamentalEightPoint_RANSAC(p1, p2, costFunction)
+function [F,inlier_mask] = fundamentalEightPoint_RANSAC(p1, p2,num_iter, costFunction)
     
     if nargin <= 2 || isempty(costFunction)
         costFunction = @dist2epipolarLineCostFn;
     end
 
     % Parameters
-    num_iterations = 10000; % Randomly selected
+    num_iterations = num_iter;
     rerun_on_inliers = true;
     debug = false;
 
@@ -13,8 +13,8 @@ function [F,inlier_mask] = fundamentalEightPoint_RANSAC(p1, p2, costFunction)
     max_num_inliers = 0;
     idx = 1:length(p1);
     N = length(p1);
-    best_guess = zeros(3,3);
-    best_guess_inlier_mask = zeros(length(p1),1)';
+    best_guess = [];
+    best_guess_inlier_mask = zeros(length(p1),1)' > 0;
         
     for i = 1:num_iterations
         % select 8 correspondences at random
@@ -28,15 +28,17 @@ function [F,inlier_mask] = fundamentalEightPoint_RANSAC(p1, p2, costFunction)
         num_inliers = nnz(inlier_mask);
         
         if num_inliers > max_num_inliers && num_inliers >= num_samples
-            if false && rerun_on_inliers
-                
+            if rerun_on_inliers
                 F_rerun = fundamentalEightPoint_normalized(p1(:,inlier_mask), p2(:,inlier_mask));
                 [err_rerun,inlier_mask_rerun] = costFunction(F,p1,p2);
                 
-                if nnz(inlier_mask_rerun) > num_inliers
+                if nnz(inlier_mask_rerun) >= max([max_num_inliers num_samples])
                    F = F_rerun;
                    err = err_rerun;
                    num_inliers = nnz(inlier_mask_rerun);
+                else
+                    % Discard the model if the refit is bad
+                    continue
                 end
             end
             
@@ -56,17 +58,6 @@ function [F,inlier_mask] = fundamentalEightPoint_RANSAC(p1, p2, costFunction)
     end
     
     F = best_guess;
-    
-    if rerun_on_inliers
-        F_rerun = fundamentalEightPoint_normalized(p1(:,best_guess_inlier_mask), p2(:,best_guess_inlier_mask));
-        [err_rerun,inlier_mask_rerun] = costFunction(F,p1,p2);
-        
-        if nnz(inlier_mask_rerun) >= num_inliers
-            F = F_rerun;
-            best_guess_inlier_mask = inlier_mask_rerun;
-        end
-    end
-    
     inlier_mask = best_guess_inlier_mask;
 end
 
