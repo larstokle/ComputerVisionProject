@@ -51,10 +51,20 @@ if ds == 0
         load('other_data/bootstrap_kitti_pose');
         load('other_data/bootstrap_kitti_state');
     else
-        img0 = imread([kitti_path '/00/image_0/' ...
-            sprintf('%06d.png',bootstrap_frames(1))]);
-        img1 = imread([kitti_path '/00/image_0/' ...
-            sprintf('%06d.png',bootstrap_frames(2))]);
+        for i = bootstrap_frames(1)
+            bootstrap_img_l(:,:,i) = imread([kitti_path '/00/image_0/' ...
+                sprintf('%06d.png',bootstrap_frames(1))]);
+            bootstrap_img_l(:,:,i) = imread([kitti_path '/00/image_1/' ...
+                sprintf('%06d.png',bootstrap_frames(1))]);
+        end
+        
+        img0 = bootstrap_img_l(:,:,bootstrap_frames(1));
+        img1 = bootstrap_img_r(:,:,bootstrap_frames(2));
+%         img0 = imread([kitti_path '/00/image_0/' ...
+%             sprintf('%06d.png',bootstrap_frames(1))]);
+%         img1 = imread([kitti_path '/00/image_0/' ...
+%             sprintf('%06d.png',bootstrap_frames(2))]);
+        
 
         disp('Start kitti init');
         [pose, state] = init(img0,img1,K);
