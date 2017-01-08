@@ -1,4 +1,4 @@
-function [theta_est, var_theta, inliers] = estimateTheta(p1, p2,K,max_dist)
+function [theta_est, var_theta, inliers,H_C1_W] = estimateTheta(p1, p2,K,max_dist)
 if size(p1,1) == 2
     p1 = homogenize2D(p1);
 end
@@ -22,7 +22,11 @@ theta = -2*atan((p2(2,:).*p1(3,:) - p1(2,:).*p2(3,:))./(p2(1,:).*p1(3,:) + p1(1,
 var_theta = var(theta);
 theta_est = median(theta);
 
-if nargout == 3
+disp('Theta mean and median');
+disp(mean(theta)*180/pi);
+disp(median(theta)*180/pi);
+
+if nargout >= 3
     E = [0, 0, sin(theta_est/2);
          0, 0, cos(theta_est/2);
          sin(theta_est/2), -cos(theta_est/2), 0];
@@ -32,6 +36,15 @@ if nargout == 3
 
     dists = reprojectionErrorCostFn(F,p1_hom,p2_hom,K);
     inliers = dists < max_dist;
+end
+
+if nargout >= 4
+    % Obtain extrinsic parameters (R,t) from E
+    [Rots,u3] = decomposeEssentialMatrix(E);
+
+    % Disambiguate among the four possible configurations
+    [R_C1_W,T_C1_W] = disambiguateRelativePose(Rots,u3,p1_hom(:,inliers),p2_hom(:,inliers),K,K);
+    H_C1_W = [R_C1_W , T_C1_W ; 0 0 0 1];
 end
 
 end

@@ -1,6 +1,6 @@
 local_setup;
 addpath('continuous_dependencies/');
-use_saved_bootstrap = true;
+use_saved_bootstrap = false;
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
@@ -78,6 +78,9 @@ end
 %% Continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
 
+figure(2); clf; ax2 = gca; hold(ax2,'on');
+figure(5); clf; ax5 = gca; hold(ax5,'on');
+
 for i = range
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
     if ds == 0
@@ -97,6 +100,10 @@ for i = range
     [pose, state] = processFrame3(image, K, pose, state);
     %state = tracker(image,state);
     toc;
+    
+    plotPoseXY(ax2,pose);
+    plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
+   	drawnow;
     
     prev_img = image;
 end

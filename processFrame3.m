@@ -9,10 +9,6 @@ addpath('continuous_dependencies/all_solns/05_ransac');
 addpath('continuous_dependencies/all_solns/07_LK_Tracker');
 addpath('continuous_dependencies/');
 
-triangulationAngleThresh = 1*pi/180;
-triangulationCosThresh = cos(triangulationAngleThresh);
-pixel_tolerance_localization = 10;
-
 %% Extract variables from previous state
 poses = oldState.poses;
 N_frames = size(poses,2) + 1;
@@ -81,13 +77,12 @@ end
 % Replace newest candidate keypoint observation with the one from the
 % current image. Important to keep ordering here.
 candidate_keypoints_prev =  candidate_keypoints(:,has_match_candidate_keypoints);
-candidate_descriptors_prev = candidate_descriptors(:,has_match_candidate_keypoints);
+%candidate_descriptors_prev = candidate_descriptors(:,has_match_candidate_keypoints);
 candidate_keypoints(:,has_match_candidate_keypoints) = img_keypoints(:,corresponding_candidate_keypoints_idx);
 candidate_descriptors(:,has_match_candidate_keypoints) = img_descriptors(:,corresponding_candidate_keypoints_idx);
 
 % Keep only landmarks we were able to track
 landmark_keypoints_prev = landmark_keypoints(:,has_match_landmarks);
-landmark_descriptors_prev = landmark_descriptors(:,has_match_landmarks);
 
 landmark_keypoints = img_keypoints(:,corresponding_landmark_keypoint_idx);
 landmark_descriptors = img_descriptors(:,corresponding_landmark_keypoint_idx);
@@ -116,7 +111,7 @@ first_obs = [first_obs candidate_first_obs];
 %% Estimate pose
 
 % 1 point ransac here
-[theta_est,var_theta,inliers] = estimateTheta(landmark_keypoints_prev,landmark_keypoints,K,1);
+[theta_est,var_theta,inliers,H_C1_prev] = estimateTheta(landmark_keypoints_prev,landmark_keypoints,K,1);
 
 disp(['Estimated theta: ' num2str(theta_est) ' num inliers' num2str(nnz(inliers)) ]);
 
@@ -143,15 +138,33 @@ assert(nnz(inliers==0)==sum(freq_out));
 hold off;
 drawnow;
 
+% Remove outliers
+landmark_keypoints = landmark_keypoints(:,inliers);
+landmark_keypoints_prev = landmark_keypoints_prev(:,inliers);
+landmark_descriptors = landmark_descriptors(:,inliers);
+first_obs = first_obs(:,inliers);
+
 % Relative pose via fundamental matrix estimation
 num_inliers = nnz(inliers);
 
 if num_inliers >= 8
-    % 8 point
+    p1_hom = homogenize2D(landmark_keypoints_prev);
+    p2_hom = homogenize2D(landmark_keypoints);
+    
+    % User normalized 8-p-a to estimate essential matrix
+    E = estimateEssentialMatrix(p1_hom,p2_hom,K,K);
+    
+    % Obtain extrinsic parameters (R,t) from E
+    [Rots,u3] = decomposeEssentialMatrix(E);
+    
+    % Disambiguate among the four possible configurations
+    [R_C1_prev,T_C1_prev] = disambiguateRelativePose(Rots,u3,p1_hom,p2_hom,K,K);
+    H_C1_prev = [R_C1_prev , T_C1_prev ; 0 0 0 1];    
+    
 elseif num_inliers >= 2
-    % 2 point
+    % 2 point - if time to implement it.
 elseif num_inliers == 1
-    % 1 point - or perhaps not..
+    % 1 point - i.e. keep what is goin on
 else
     % Run init again or other fallback. Such as using previous estimate.
 end
@@ -173,7 +186,11 @@ candidate_keypoints = new_candidate_keypoints;
 candidate_descriptors = new_candidate_descriptors;
 
 %% Update poses
-pose = eye(4); 
+H_W_prev = reshape(poses(:,end),4,4);
+H_prev_W = H_W_prev^-1;
+H_C1_W = H_C1_prev*H_prev_W;
+
+pose = H_C1_W^-1; % Pose from 1-p-ransac
 poses = [poses pose(:)];
 
 %% Set new state
