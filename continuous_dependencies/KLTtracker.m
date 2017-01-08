@@ -25,7 +25,7 @@ valid = zeros(1,num_templates);
 if debug
     curr_pos = translation;
 
-    figure(3);clf(3);
+    figure(10);clf(10);
     imshow(img);hold on; % Show the movie frame
     title(['Tracker']) % Display the frame number on top of the image
     set(gcf,'Color','w'); axis on,

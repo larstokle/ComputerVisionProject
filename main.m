@@ -11,8 +11,8 @@ use_saved_bootstrap = false;
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
 if ds == 0
-    bootstrap_frames = [1 3];
-    
+    bootstrap_frames = [85 150];
+    baseline = 0.54;
     % need to set kitti_path to folder containing "00" and "poses"
     assert(exist('kitti_path', 'var') ~= 0);
     ground_truth = load([kitti_path '/poses/00.txt']);
@@ -51,21 +51,22 @@ if ds == 0
         load('other_data/bootstrap_kitti_pose');
         load('other_data/bootstrap_kitti_state');
     else
-        for i = bootstrap_frames(1)
-            bootstrap_img_l(:,:,i) = imread([kitti_path '/00/image_0/' ...
-                sprintf('%06d.png',bootstrap_frames(1))]);
-            bootstrap_img_l(:,:,i) = imread([kitti_path '/00/image_1/' ...
-                sprintf('%06d.png',bootstrap_frames(1))]);
+        
+        for i = bootstrap_frames(1):bootstrap_frames(2)
+            bootstrap_img_l(:,:,i-bootstrap_frames(1)+1) = imread([kitti_path '/00/image_0/' ...
+                sprintf('%06d.png',i)]);
+            bootstrap_img_r(:,:,i-bootstrap_frames(1)+1) = imread([kitti_path '/00/image_1/' ...
+                sprintf('%06d.png',i)]);
         end
         
-        img0 = bootstrap_img_l(:,:,bootstrap_frames(1));
-        img1 = bootstrap_img_r(:,:,bootstrap_frames(2));
+        img0 = bootstrap_img_l(:,:,1);
+        img1 = bootstrap_img_r(:,:,end);
 %         img0 = imread([kitti_path '/00/image_0/' ...
 %             sprintf('%06d.png',bootstrap_frames(1))]);
 %         img1 = imread([kitti_path '/00/image_0/' ...
 %             sprintf('%06d.png',bootstrap_frames(2))]);
         
-
+        %% init
         disp('Start kitti init');
         [pose, state] = init(img0,img1,K);
         disp('Kitti init finished');
