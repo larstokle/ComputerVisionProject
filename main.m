@@ -54,18 +54,11 @@ else
 end
 
 %% init bootstrap 
-if ds == 0
-    if use_saved_bootstrap
-        load('other_data/bootstrap_kitti_pose');
-        load('other_data/bootstrap_kitti_state');
-    else
-        
-        img0 = imread([kitti_path '/00/image_0/' ...
-            sprintf('%06d.png',bootstrap_frames(1))]);
-        img1 = imread([kitti_path '/00/image_0/' ...
-            sprintf('%06d.png',bootstrap_frames(2))]);
-      
-    end    
+if ds == 0    
+    img0 = imread([kitti_path '/00/image_0/' ...
+        sprintf('%06d.png',bootstrap_frames(1))]);
+    img1 = imread([kitti_path '/00/image_0/' ...
+        sprintf('%06d.png',bootstrap_frames(2))]);
 elseif ds == 1
     img0 = rgb2gray(imread([malaga_path ...
         '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
