@@ -1,6 +1,5 @@
 %% init parameters
-use_saved_bootstrap = false;
-use_stereo = true;
+VOpipe = 0; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
@@ -12,14 +11,11 @@ figure(5); clf; ax5 = gca; hold(ax5,'on');
 
 local_setup;
 addpath('continuous_dependencies/');
-use_saved_bootstrap = false;
-use_stereo = true;
-
-ds = 1; % 0: KITTI, 1: Malaga, 2: parking
 
 if ds == 0
     bootstrap_frames = [1 3];
     baseline = 0.54;
+    
     % need to set kitti_path to folder containing "00" and "poses"
     assert(exist('kitti_path', 'var') ~= 0);
     ground_truth = load([kitti_path '/poses/00.txt']);
@@ -33,6 +29,7 @@ if ds == 0
 elseif ds == 1
     bootstrap_frames = [1 3];
     baseline = 0.119471;
+    
     % Path containing the many files of Malaga 7.
     assert(exist('malaga_path', 'var') ~= 0);
     images = dir([malaga_path ...
@@ -44,6 +41,7 @@ elseif ds == 1
         0 621.18428 309.05989
         0 0 1];
 elseif ds == 2
+    bootstrap_frames = [1 3];
     % Path containing images, depths and all...
     assert(exist('parking_path', 'var') ~= 0);
     last_frame = 598;
@@ -55,7 +53,7 @@ else
     assert(false);
 end
 
-%% Bootstrap
+%% init bootstrap 
 if ds == 0
     if use_saved_bootstrap
         load('other_data/bootstrap_kitti_pose');
@@ -66,18 +64,8 @@ if ds == 0
             sprintf('%06d.png',bootstrap_frames(1))]);
         img1 = imread([kitti_path '/00/image_0/' ...
             sprintf('%06d.png',bootstrap_frames(2))]);
-        
-        if ~use_stereo
-            %% init
-            disp('Start kitti init');
-            [pose, state] = init(img0,img1,K);
-            disp('Kitti init finished');
-
-            save('other_data/bootstrap_kitti_pose','pose');
-            save('other_data/bootstrap_kitti_state','state');    
-        end
-     end
-    
+      
+    end    
 elseif ds == 1
     img0 = rgb2gray(imread([malaga_path ...
         '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
@@ -85,17 +73,30 @@ elseif ds == 1
     img1 = rgb2gray(imread([malaga_path ...
         '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
         left_images(bootstrap_frames(2)).name]));
+    
 elseif ds == 2
     img0 = rgb2gray(imread([parking_path ...
         sprintf('/images/img_%05d.png',bootstrap_frames(1))]));
     img1 = rgb2gray(imread([parking_path ...
         sprintf('/images/img_%05d.png',bootstrap_frames(2))]));
+    
 else
     assert(false);
 end
 
+%% run bootstrap
+if VOpipe == 0 %0: monocular p3p RANSAC
+    %% init
+    disp('Start kitti init');
+    [pose, state] = init(img0,img1,K);
+    disp('Kitti init finished');
 
-if use_stereo
+    save('other_data/bootstrap_kitti_pose','pose');
+    save('other_data/bootstrap_kitti_state','state');  
+elseif VOpipe == 1
+   
+    
+elseif VOpipe == 2
     assert(ds ~= 2,'Not stereo images for paring');
     state = [];
     for i = bootstrap_frames(1):bootstrap_frames(2)
@@ -116,9 +117,11 @@ if use_stereo
     end
 end
 
-
-%% Continuous operation
+%% init continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
+
+figure(2); clf; ax2 = gca; hold(ax2,'on');
+figure(5); clf; ax5 = gca; hold(ax5,'on');
 
 for i = range
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
@@ -143,36 +146,35 @@ for i = range
     end
     
     tic;
-    if use_stereo
-        [pose, state] = processStereo(image, image_r, K, baseline, state);
-    else
+%% run continous operation
+    if VOpipe == 0 % 0: monocular p3p RANSAC
+        
         [pose, state] = processFrame(image, K, pose, state);
-        toc;
+        
 
         plotPoseXY(ax2,pose);
         plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
         drawnow;
         %pause;
         prev_img = image;
+        
+    elseif VOpipe == 1 % 1: monocular 1p-histogram with 8point essential matrix
+        
+        [pose, state] = processFrame3(image, K, pose, state);
+        %state = tracker(image,state);
+
+        plotPoseXY(ax2,pose);
+        plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
+        drawnow;
+
+        prev_img = image;
+        
+    elseif VOpipe == 2 % 2: stereo VO
+        
+        [pose, state] = processStereo(image, image_r, K, baseline, state);
+         
     end
+    toc
 end
 
 %% aftermath
-
-% plotting of the rotation
-figure(6);clf;
-omegas = reshape(state.poses,[4,4,size(state.poses,2)]);
-omegas = omegas(1:3,1:3,:);
-for i = 1:size(state.poses,2)
-omgegas(:,:,i) = logm(omegas(:,:,i));
-end
-tvist = [];
-for i = 1:size(state.poses,2)
-temp = omegas(:,:,i);tvist(:,i) = temp([6,7,2]);
-end
-plot(tvist(1,:))
-hold on
-plot(tvist(2,:))
-plot(tvist(3,:))
-legend('X','Y','Z');
-title('rotation vector coords');
