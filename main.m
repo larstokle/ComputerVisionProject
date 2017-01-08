@@ -1,3 +1,9 @@
+%% init parameters
+use_saved_bootstrap = false;
+use_stereo = true;
+
+ds = 0; % 0: KITTI, 1: Malaga, 2: parking
+
 %% Setup
 figure(2); clf; ax2 = gca; hold(ax2,'on');
 figure(3); clf; ax3 = gca;
@@ -9,10 +15,10 @@ addpath('continuous_dependencies/');
 use_saved_bootstrap = false;
 use_stereo = true;
 
-ds = 0; % 0: KITTI, 1: Malaga, 2: parking
+ds = 1; % 0: KITTI, 1: Malaga, 2: parking
 
 if ds == 0
-    bootstrap_frames = [85 87];
+    bootstrap_frames = [1 3];
     baseline = 0.54;
     % need to set kitti_path to folder containing "00" and "poses"
     assert(exist('kitti_path', 'var') ~= 0);
@@ -25,11 +31,14 @@ if ds == 0
         0 7.188560000000e+02 1.852157000000e+02
         0 0 1];
 elseif ds == 1
+    bootstrap_frames = [1 3];
+    baseline = 0.119471;
     % Path containing the many files of Malaga 7.
     assert(exist('malaga_path', 'var') ~= 0);
     images = dir([malaga_path ...
         '/malaga-urban-dataset-extract-07_rectified_800x600_Images']);
     left_images = images(3:2:end);
+    right_images = images(4:2:end);
     last_frame = length(left_images);
     K = [621.18428 0 404.0076
         0 621.18428 309.05989
@@ -85,13 +94,24 @@ else
     assert(false);
 end
 
-state = [];
+
 if use_stereo
+    assert(ds ~= 2,'Not stereo images for paring');
+    state = [];
     for i = bootstrap_frames(1):bootstrap_frames(2)
-        img_l = imread([kitti_path '/00/image_0/' ...
-            sprintf('%06d.png',i)]);
-        img_r = imread([kitti_path '/00/image_1/' ...
-            sprintf('%06d.png',i)]);
+        if ds == 0
+            img_l = imread([kitti_path '/00/image_0/' ...
+                sprintf('%06d.png',i)]);
+            img_r = imread([kitti_path '/00/image_1/' ...
+                sprintf('%06d.png',i)]);
+        elseif ds == 1
+            img_l = rgb2gray(imread([malaga_path ...
+                '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
+                left_images(i).name]));
+            img_r = rgb2gray(imread([malaga_path ...
+                '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
+                right_images(i).name]));
+        end
         [pose,state] = processStereo(img_l, img_r, K, baseline, state);
     end
 end
@@ -111,6 +131,9 @@ for i = range
         image = rgb2gray(imread([malaga_path ...
             '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
             left_images(i).name]));
+        image_r = rgb2gray(imread([malaga_path ...
+            '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
+            right_images(i).name]));
          
     elseif ds == 2
         image = im2uint8(rgb2gray(imread([parking_path ...

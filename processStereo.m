@@ -2,7 +2,14 @@ function [T, S] = processStereo(img_l,img_r,K, baseline, state)
 ax2 = get(2,'CurrentAxes');
 ax3 = get(3,'CurrentAxes');
 ax5 = get(5,'CurrentAxes');
+
+addpath('continuous_dependencies/all_solns/00_camera_projection');
+addpath('continuous_dependencies/all_solns/01_pnp');
 addpath('continuous_dependencies/all_solns/03_stereo');
+addpath('continuous_dependencies/all_solns/02_detect_describe_match');
+addpath('continuous_dependencies/');
+addpath('continuous_dependencies/all_solns/05_ransac');
+
 assert(sum(size(img_l) == size(img_r)) ~= 0);
 debug = true;
 
@@ -13,7 +20,7 @@ num_keypoints = 1000;
 nonmaximum_supression_radius = 8;
 descriptor_radius = 9;
 r = descriptor_radius;
-match_lambda = 6;
+match_lambda = 5;
 max_corner_dist = 200; 
 max_epipolar_dist = 15;
 
@@ -23,7 +30,7 @@ patch_size = (2*r+1);
 
 disp_patch_radius = 5;
 
-reprojection_pix_tol = 3;
+reprojection_pix_tol = 2;
 
 
 harrisScore = harris(img_l, harris_patch_size, harris_kappa);
@@ -92,7 +99,7 @@ else
 end
 
 plotPoseXY(ax2,H_W_frame);
-scatter(landmarks(3,:), -landmarks(1,:),'.b', 'Parent', ax2);
+scatter(landmarks(3,:), -landmarks(1,:),'.c', 'Parent', ax2);
 axis(ax2,'equal');
 
 newState.descriptors = descriptors;
