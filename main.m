@@ -1,5 +1,5 @@
 %% init parameters
-VOpipe = 0; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
+VOpipe = 1; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
@@ -94,7 +94,7 @@ if VOpipe == 0 %0: monocular p3p RANSAC
     save('other_data/bootstrap_kitti_pose','pose');
     save('other_data/bootstrap_kitti_state','state');  
 elseif VOpipe == 1
-   
+    [pose, state] = oneP_init(img1);
     
 elseif VOpipe == 2
     assert(ds ~= 2,'Not stereo images for paring');
@@ -127,7 +127,7 @@ for i = range
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
     if ds == 0
         image = imread([kitti_path '/00/image_0/' sprintf('%06d.png',i)]);
-        if use_stereo
+        if VOpipe==2
            image_r = imread([kitti_path '/00/image_1/' sprintf('%06d.png',i)]);
         end
     elseif ds == 1
