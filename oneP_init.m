@@ -1,5 +1,6 @@
 function [pose,state] = oneP_init(img)
-    
+    addpath('init_dependencies/harris/');
+
     % Pass keypoints and descriptors on
     [img_keypoints, img_descriptors] = getHarrisFeatures(img);
     
