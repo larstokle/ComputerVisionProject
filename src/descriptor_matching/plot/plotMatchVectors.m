@@ -6,7 +6,7 @@ function plotMatchVectors(p1,p2,lineSpec,ax)
     end
     
     if ~exist('ax','var') || isempty(ax)
-        ax = gca
+        ax = gca;
     end
     
     dim = size(p1,1);
