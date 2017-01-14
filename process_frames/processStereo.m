@@ -1,19 +1,13 @@
-function [T, S] = processStereo(img_l,img_r,K, baseline, state)
-ax2 = get(2,'CurrentAxes');
-ax3 = get(3,'CurrentAxes');
-ax5 = get(5,'CurrentAxes');
-
-% addpath('continuous_dependencies/all_solns/00_camera_projection');
-% addpath('continuous_dependencies/all_solns/01_pnp');
-% addpath('continuous_dependencies/all_solns/03_stereo');
-% addpath('continuous_dependencies/all_solns/02_detect_describe_match');
-% addpath('continuous_dependencies/');
-% addpath('continuous_dependencies/all_solns/05_ransac');
+function [T, S] = processStereo(img_l,img_r,K, baseline, state, plotAx)
+%% init
+mapAx = plotAx.map;
+lndmrkAx = plotAx.lndmrk;
+heightAx = plotAx.height;
 
 assert(sum(size(img_l) == size(img_r)) ~= 0);
 debug = true;
 
-
+% parameters
 harris_patch_size = 9;
 harris_kappa = 0.08;
 num_keypoints = 1000;
@@ -30,15 +24,16 @@ patch_size = (2*r+1);
 
 disp_patch_radius = 5;
 
-reprojection_pix_tol = 2;
+reprojection_pix_tol = 4;
 
-
+%% extract keypoints
 harrisScore = harris(img_l, harris_patch_size, harris_kappa);
 corners = selectKeypoints(harrisScore, num_keypoints, nonmaximum_supression_radius);
 cornersInds = sub2ind(size(img_l),corners(1,:),corners(2,:));
 [sortedCornersInds,cornersOrderToLinear] = sort(cornersInds);
 corners = corners(:,cornersOrderToLinear); % does this ruin the best corners first?
 
+%% triangulate
 dispMap = getDisparityAtPoints(img_l,img_r, corners, disp_patch_radius, min_disp, max_max_disp);
 landmarks = disparityToPointCloud(dispMap, K, baseline, img_l);
 
@@ -51,43 +46,51 @@ landmarks = landmarks(:,ok_lndmrks);
 corners = corners(:,ok_lndmrks);
 descriptors = descriptors(:,ok_lndmrks);
 
+
 if  ~isempty(state)
     prev_descriptors = state.descriptors;
     prev_corners = state.keypoints;
     prev_landmarks = state.landmarks;
-    
+
+    %% track keypoints from last frame
     matches =  matchDescriptorsAckermannConstrained(prev_descriptors, descriptors,...
                                                     prev_corners, corners,...
                                                     match_lambda, K, max_epipolar_dist, max_corner_dist);
 
 %    matches = matchDescriptors(prev_descriptors, descriptors, match_lambda);
-    [~, ind_prev, ind_frame] = find(matches);
-    tracked_landmarks = prev_landmarks(:,ind_prev);
+    [~, indx_prev, indx_frame] = find(matches);
+    tracked_landmarks = prev_landmarks(:,indx_prev);
     
-    [H_frame_W, inliers] = ransacLocalization(corners(:,ind_frame), tracked_landmarks, K, reprojection_pix_tol);
+    %% estimate pose
+    [H_frame_W, inliers] = ransacLocalization(corners(:,indx_frame), tracked_landmarks, K, reprojection_pix_tol);
     H_W_frame = H_frame_W\eye(4);
     if debug
-        cla(ax3);
-        imshow(img_l,'Parent',ax3);
-        hold(ax3,'on');
-        plotMatches(matches,flipud(prev_corners),flipud(corners),ax3);
-        scatter(prev_corners(1,ind_prev),prev_corners(2,ind_prev),'y','Parent',ax3)
-        scatter(corners(1,ind_frame(inliers)),corners(2,ind_frame(inliers)),'r','Parent',ax3);
-        %pause;
+        cla(lndmrkAx);
+        imshow(img_l,'Parent',lndmrkAx);
+        hold(lndmrkAx,'on');
+        plotMatchVectors(prev_corners(:,indx_prev), corners(:,indx_frame),'r',lndmrkAx);
+        plotMatchVectors(prev_corners(:,indx_prev(inliers)), corners(:,indx_frame(inliers)),'g',lndmrkAx);
+        title(lndmrkAx,'Tracked Landmarks')
+        lh = legend(lndmrkAx,'Outliers','Inliers');
+        set(lh,'Location','southoutside','Orientation','horizontal','Box','off');
     end
-    %sort tracked and untracked to keep world frame better
-    ind_frame = ind_frame(inliers); 
-    ind_prev = ind_prev(inliers);
+    
+    %% sort tracked and untracked to keep world frame better
+    indx_frame = indx_frame(inliers); 
+    indx_prev = indx_prev(inliers);
     tracked_landmarks = tracked_landmarks(:,inliers);
     
-    landmarks(:,ind_frame) = [];
+    
+    landmarks(:,indx_frame) = [];
     landmarks = eye(3,4)*H_W_frame*[landmarks;ones(1,size(landmarks,2))]; %set them to world frame;
     
-    tracked_corners = corners(:,ind_frame);
-    tracked_descriptors = descriptors(:,ind_frame);
+    scatter(landmarks(3,:), -landmarks(1,:),'.c', 'Parent', mapAx);
     
-    corners(:,ind_frame) = [];
-    descriptors(:,ind_frame) = [];
+    tracked_corners = corners(:,indx_frame);
+    tracked_descriptors = descriptors(:,indx_frame);
+    
+    corners(:,indx_frame) = [];
+    descriptors(:,indx_frame) = [];
     
     landmarks = [tracked_landmarks, landmarks];
     corners = [tracked_corners,corners];
@@ -98,9 +101,8 @@ else
     H_frame_W = eye(4);
 end
 
-plotPoseXY(ax2,H_W_frame);
-scatter(landmarks(3,:), -landmarks(1,:),'.c', 'Parent', ax2);
-axis(ax2,'equal');
+plotPoseXY(mapAx,H_W_frame);
+axis(mapAx,'equal');
 
 newState.descriptors = descriptors;
 newState.keypoints = corners;
@@ -116,8 +118,8 @@ T = H_W_frame;
 S = newState;
 
 if ~isempty(state)
-    plot(ax5,[S.poses(12+3,end-1), S.poses(12+3,end)],-[S.poses(12+2,end-1), S.poses(12+2,end)],'b')
-    axis(ax5,'equal');
+    plot(heightAx,[S.poses(12+3,end-1), S.poses(12+3,end)],-[S.poses(12+2,end-1), S.poses(12+2,end)],'b')
+    axis(heightAx,'equal');
 end
 drawnow;
 end

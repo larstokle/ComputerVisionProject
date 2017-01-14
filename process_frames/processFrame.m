@@ -1,4 +1,4 @@
-function [pose, state] = processFrame(img, K, H_W0, old_state)
+function [pose, state] = processFrame(img, K, H_W0, old_state, plotAx)
 %[pose, state] = processFrame(img, K, H_W0, oldState):
 %   
 %   Input:
@@ -24,9 +24,9 @@ use_epipolarConstr_cndt = false; %matches with epipolar constraint, if use_Acker
 
 %% Init 
 % plotting
-mapAx = get(2,'CurrentAxes');
-lndmrkAx = get(3,'CurrentAxes');
-cndtAx = get(4,'CurrentAxes');
+mapAx = plotAx.map;
+lndmrkAx = plotAx.lndmrk;
+cndtAx = plotAx.cndt;
 
 % Tuning parameters frame (new) keypoints
 harris_patch_size = 9;
@@ -298,7 +298,7 @@ tracked_landmarks_frame_descriptors = [tracked_landmarks_frame_descriptors, trac
 %scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', cndtAx);
 plotMatchVectors(candidate_keypoints_first(:,can_triangulate), tracked_candidate_keypoints(:,can_triangulate), 'r', cndtAx);
 plotMatchVectors(candidate_keypoints_first(:,did_triangulate), tracked_candidate_keypoints(:,did_triangulate), 'g', cndtAx);
-title(['Tracked candidate keypoints from last frame, #tracked = ',num2str(N_candidates_tracked), ', #triangulated = ', num2str(length(can_triangulate)), ', #new landmarks ', num2str(size(new_landmarks,2))],'Parent',cndtAx);
+title({'Tracked candidate keypoints from last frame';sprintf('#tracked = %i, #triangulated = %i, #new landmarks %i',N_candidates_tracked, length(can_triangulate), size(new_landmarks,2))},'Parent',cndtAx);
 legend(cndtAx,'tracked','triangulation failed', 'new landmark','Location','so','Orientation','horizontal','Box','off');
 scatter(new_landmarks(3,:), -new_landmarks(1,:),'.r', 'Parent', mapAx);
 axis(mapAx,'equal');

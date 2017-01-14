@@ -4,10 +4,30 @@ VOpipe = 0; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point ess
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
 %% Setup
-figure(2); clf; ax2 = gca; hold(ax2,'on');
-figure(3); clf; ax3 = gca;
-figure(4); clf; ax4 = gca;
-figure(5); clf; ax5 = gca; hold(ax5,'on');
+fh = figure(1);clf;
+set(fh, 'Color','white','Position', get(0,'Screensize'));
+ax2 = axes('Position',[0.075, 0.1, 0.4, 0.4]); hold(ax2,'on'); set(ax2, 'Box','on');
+ax3 = axes('Position',[0.075, 0.6, 0.4, 0.3]); set(ax3, 'Box', 'off', 'Visible','off'); 
+ax4 = axes('Position',[0.525, 0.6, 0.4, 0.3]); set(ax4, 'Box', 'off', 'Visible','off'); 
+ax5 = axes('Position',[0.525, 0.1, 0.4, 0.4]); hold(ax5,'on'); set(ax5, 'Box','on', 'YaxisLocation','right');
+
+plotAx.map = ax2;
+plotAx.lndmrk = ax3;
+plotAx.cndt = ax4;
+plotAx.height = ax5;
+
+title(ax2, 'Landmarks and poses');
+xlabel(ax2, 'Camera Z-axis');
+ylabel(ax2, 'Camera negative X-axis');
+
+title(ax5, 'Height');
+xlabel(ax5, 'Camera Z-axis');
+ylabel(ax5, 'Camera negative Y-axis');
+
+% figure(2); clf; ax2 = gca; hold(ax2,'on');
+% figure(3); clf; ax3 = gca;
+% figure(4); clf; ax4 = gca;
+% figure(5); clf; ax5 = gca; hold(ax5,'on');
 
 local_setup; %sets up the right folders
 addpath(genpath([pwd,'\src']));
@@ -108,15 +128,15 @@ elseif VOpipe == 2
                 '/malaga-urban-dataset-extract-07_rectified_800x600_Images/' ...
                 right_images(i).name]));
         end
-        [pose,state] = processStereo(img_l, img_r, K, baseline, state);
+        [pose,state] = processStereo(img_l, img_r, K, baseline, state, plotAx);
     end
 end
 
 %% init continuous operation
 range = (bootstrap_frames(2)+1):last_frame;
 
-figure(2); clf; ax2 = gca; hold(ax2,'on');
-figure(5); clf; ax5 = gca; hold(ax5,'on');
+% figure(2); clf; ax2 = gca; hold(ax2,'on');
+% figure(5); clf; ax5 = gca; hold(ax5,'on');
 
 for i = range
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
@@ -144,7 +164,7 @@ for i = range
 %% run continous operation
     if VOpipe == 0 % 0: monocular p3p RANSAC
         
-        [pose, state] = processFrame(image, K, pose, state);
+        [pose, state] = processFrame(image, K, pose, state,plotAx);
         
 
         plotPoseXY(ax2,pose);
@@ -168,7 +188,7 @@ for i = range
         
     elseif VOpipe == 2 % 2: stereo VO
         
-        [pose, state] = processStereo(image, image_r, K, baseline, state);
+        [pose, state] = processStereo(image, image_r, K, baseline, state, plotAx);
          
     end
     toc
