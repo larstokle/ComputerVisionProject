@@ -26,6 +26,6 @@ end
 
 function err = reprojectionErrorSquared(P,p,M)
     p_proj = M*P; % Project 3D points into image plane using projection matrix M
-    p_proj = p_proj./p_proj(3,:); % Dehomogenize
+    p_proj = p_proj./(ones(3,1)*p_proj(3,:)); % Dehomogenize
     err = sum((p_proj - p).^2,1); % 
 end

@@ -1,14 +1,14 @@
 function [pose, state] = processFrame3(img, K, H_W_prev, oldState)
         
 %% Dependencies
-addpath('init_dependencies/8point/');
-addpath('continuous_dependencies/all_solns/00_camera_projection');
-addpath('continuous_dependencies/all_solns/01_pnp');
-addpath('continuous_dependencies/all_solns/02_detect_describe_match');
-addpath('continuous_dependencies/all_solns/04_8point', 'continuous_dependencies/all_solns/04_8point/triangulation', 'continuous_dependencies/all_solns/04_8point/8point');
-addpath('continuous_dependencies/all_solns/05_ransac');
-addpath('continuous_dependencies/all_solns/07_LK_Tracker');
-addpath('continuous_dependencies/');
+% addpath('init_dependencies/8point/');
+% addpath('continuous_dependencies/all_solns/00_camera_projection');
+% addpath('continuous_dependencies/all_solns/01_pnp');
+% addpath('continuous_dependencies/all_solns/02_detect_describe_match');
+% addpath('continuous_dependencies/all_solns/04_8point', 'continuous_dependencies/all_solns/04_8point/triangulation', 'continuous_dependencies/all_solns/04_8point/8point');
+% addpath('continuous_dependencies/all_solns/05_ransac');
+% addpath('continuous_dependencies/all_solns/07_LK_Tracker');
+% addpath('continuous_dependencies/');
 
 %% Options
 do_plot = true;
@@ -185,11 +185,11 @@ if do_plot
 
     subplot(1,3,3);
     frames_in = sort(unique(first_obs(inliers)));
-    freq_in = sum(first_obs(inliers) == frames_in',2);
+    freq_in = sum(ones(size(frames_in'))*first_obs(inliers) == frames_in'*ones(size(first_obs(inliers))),2);
     plot(frames_in,freq_in,'g-');
     hold on
     frames_out = sort(unique(first_obs(inliers==0)));
-    freq_out = sum(first_obs(inliers==0) == frames_out',2);
+    freq_out = sum(ones(size(frames_out'))*first_obs(inliers==0) == frames_out'*ones(size(first_obs(inliers == 0))),2);
     plot(frames_out,freq_out,'r-');
 
     % Guard. If min==max matlab complains

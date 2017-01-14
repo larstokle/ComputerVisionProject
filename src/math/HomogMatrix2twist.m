@@ -18,7 +18,7 @@ se_matrix = logm(H);
 
 v = se_matrix(1:3,4);
 
-w = Matrix2Cross(se_matrix(1:3,1:3));
+w = matrix2cross(se_matrix(1:3,1:3));
 
 twist = [v; w];
 

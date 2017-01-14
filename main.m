@@ -1,5 +1,5 @@
 %% init parameters
-VOpipe = 1; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
+VOpipe = 0; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
@@ -10,7 +10,9 @@ figure(4); clf; ax4 = gca;
 figure(5); clf; ax5 = gca; hold(ax5,'on');
 
 local_setup;
-addpath('continuous_dependencies/');
+addpath(genpath([pwd,'\src']));
+addpath('inits');
+addpath('process_frames');
 
 if ds == 0
     bootstrap_frames = [1 3];
@@ -146,6 +148,7 @@ for i = range
         
 
         plotPoseXY(ax2,pose);
+        axis(ax2,'equal');
         plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
         drawnow;
         %pause;
@@ -157,6 +160,7 @@ for i = range
         %state = tracker(image,state);
 
         plotPoseXY(ax2,pose);
+        axis(ax2,'equal');
         plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
         drawnow;
 

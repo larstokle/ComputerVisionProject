@@ -3,12 +3,12 @@ ax2 = get(2,'CurrentAxes');
 ax3 = get(3,'CurrentAxes');
 ax5 = get(5,'CurrentAxes');
 
-addpath('continuous_dependencies/all_solns/00_camera_projection');
-addpath('continuous_dependencies/all_solns/01_pnp');
-addpath('continuous_dependencies/all_solns/03_stereo');
-addpath('continuous_dependencies/all_solns/02_detect_describe_match');
-addpath('continuous_dependencies/');
-addpath('continuous_dependencies/all_solns/05_ransac');
+% addpath('continuous_dependencies/all_solns/00_camera_projection');
+% addpath('continuous_dependencies/all_solns/01_pnp');
+% addpath('continuous_dependencies/all_solns/03_stereo');
+% addpath('continuous_dependencies/all_solns/02_detect_describe_match');
+% addpath('continuous_dependencies/');
+% addpath('continuous_dependencies/all_solns/05_ransac');
 
 assert(sum(size(img_l) == size(img_r)) ~= 0);
 debug = true;

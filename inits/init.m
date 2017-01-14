@@ -1,8 +1,6 @@
 function [T,S] = init(img0,img1,K)
     
     % Dependencies
-    
-    
     debug = false;
     bundle_adjust = false;
     useAckerman = true;
@@ -247,8 +245,8 @@ function [T,S] = init(img0,img1,K)
     % Used in tracker
     
     dummyRot = [ T(1:3,1:3), zeros(3,1) ; 0 0 0 1];
-    dummyRotTwist = HomogMatrix2twist(dummyRot)/2; % Half the magnitude of rotation
-    dummyRot = twist2HomogMatrix(dummyRotTwist);
+    dummyRotTwist = homogMatrix2twist(dummyRot)/2; % Half the magnitude of rotation
+    dummyRot = twist2homogMatrix(dummyRotTwist);
     dummypose = [dummyRot(1:3,1:3) , T(1:3,4)./2 ; 0 0 0 1]; % Half the translation
     
     state.poses = [dummypose(:) , T(:)];
