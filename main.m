@@ -9,7 +9,7 @@ figure(3); clf; ax3 = gca;
 figure(4); clf; ax4 = gca;
 figure(5); clf; ax5 = gca; hold(ax5,'on');
 
-local_setup;
+local_setup; %sets up the right folders
 addpath(genpath([pwd,'\src']));
 addpath('inits');
 addpath('process_frames');

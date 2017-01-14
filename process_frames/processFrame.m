@@ -15,11 +15,11 @@ function [pose, state] = processFrame(img, K, H_W0, old_state)
 %% tracking algorithm options
 % Landmarks
 use_KLT = false; % tracks landmark descriptors with KLT
-use_Ackermann_lndmrk = false; %matches landmarks with ackerman constraint if KLT is not used
+use_Ackermann_lndmrk = true; %matches landmarks with ackerman constraint if KLT is not used
 
 % Candidates
-use_Ackermann_cndt = false; % matches landmarks with Ackerman constraint
-use_epipolarConstr_cndt = true; %matches with epipolar constraint, if use_Ackermann_cndt = false
+use_Ackermann_cndt = true; % matches landmarks with Ackerman constraint
+use_epipolarConstr_cndt = false; %matches with epipolar constraint, if use_Ackermann_cndt = false
 % otherwise matching with only distance constraint is used
 
 %% Init 
@@ -176,24 +176,18 @@ else
     tracked_landmarks_prev_keypoints = landmark_prev_keypoints(:,establishedInd);
     tracked_landmarks = landmarks_w(:,establishedInd);
     
-%     [~, isNew] = setdiff(...
-%                 round(frame_keypoints'/nonmaximum_supression_radius),...
-%                 round(tracked_landmarks_frame_keypoints'/nonmaximum_supression_radius),...
-%                 'rows');
-
     frame_keypoints(:,current_frame_idx) = []; % = frame_keypoints(:,isNew);
     frame_descriptors(:,current_frame_idx) = []; % = frame_descriptors(:,isNew);
 end
 
-% Validation plot landmark points
-%set(0,'CurrentFigure',3);clf;
+% Validation plot landmark keypoints
 cla(lndmrkAx);
 imshow(img,'Parent',lndmrkAx);
 hold(lndmrkAx,'on');
+
 scatter(landmark_prev_keypoints(1,:), landmark_prev_keypoints(2,:), 'yx','Linewidth',2','Parent',lndmrkAx);
-plot([tracked_landmarks_prev_keypoints(1,:); tracked_landmarks_frame_keypoints(1,:)],[tracked_landmarks_prev_keypoints(2,:); tracked_landmarks_frame_keypoints(2,:)],'r','Linewidth',1,'Parent',lndmrkAx);
+plotMatchVectors(tracked_landmarks_prev_keypoints, tracked_landmarks_frame_keypoints, 'r',lndmrkAx);
 title('Landmarks tracked from previous frame','Parent',lndmrkAx);
-scatter(tracked_landmarks_frame_keypoints(1,:), tracked_landmarks_frame_keypoints(2,:),'rx','Linewidth',2,'Parent',lndmrkAx);
 
 %% Estimate relative pose
 
@@ -211,7 +205,8 @@ tracked_landmarks = tracked_landmarks(:,inliers);
 tracked_landmarks_prev_keypoints = tracked_landmarks_prev_keypoints(:,inliers);
 
 %validate ransac
-plot([tracked_landmarks_prev_keypoints(1,:); tracked_landmarks_frame_keypoints(1,:)],[tracked_landmarks_prev_keypoints(2,:); tracked_landmarks_frame_keypoints(2,:)],'g','Linewidth',1,'Parent',lndmrkAx);
+plotMatchVectors(tracked_landmarks_prev_keypoints, tracked_landmarks_frame_keypoints, 'g', lndmrkAx);
+legend(lndmrkAx,'Landmarks', 'tracked outliers', 'tracked inliers','Location','so','Orientation','horizontal','Box','off');
 
 %% Compute homogenous transforms
 H_WC = H_CW\eye(4);     % World to 1
@@ -224,7 +219,7 @@ if use_Ackermann_cndt %using Ackermann or not
     [matches_candidate, theta_frame_hat, varTheta_frame] = matchDescriptorsAckermannConstrained(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, K, max_epipole_line_dist_cndt, max_match_dist_cndt);
     %theta_frame_hat = -theta_frame_hat; %ackermann estimates theta around upward axis here Y is downward
 elseif use_epipolarConstr_cndt
-    matches_candidate = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist, max_match_dist_cndt);
+    matches_candidate = matchDescriptorsEpiPolar(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, H_prev_C, K, max_epipole_line_dist_cndt, max_match_dist_cndt);
 else
     matches_candidate = matchDescriptorsLocally(candidate_descriptors_prev, frame_descriptors, candidate_prev_keypoints, frame_keypoints, match_lambda_candidates, max_match_dist_cndt);
 end
@@ -244,13 +239,11 @@ frame_descriptors(:,current_frame_idx) = [];
 frame_bearings = calculateBearingVectors(frame_keypoints,H_WC,K);
 
 %validation plot candidates
-%set(0,'CurrentFigure',4);clf;
 cla(cndtAx);
 imshow(img,'Parent',cndtAx);
 hold(cndtAx,'on');
-scatter(candidate_keypoints_first(1,:), candidate_keypoints_first(2,:), 'yx','Linewidth',2,'Parent',cndtAx);
-plot([candidate_keypoints_first(1,prev_frame_idx); tracked_candidate_keypoints(1,:)],[candidate_keypoints_first(2,prev_frame_idx); tracked_candidate_keypoints(2,:)],'g','Linewidth',1, 'Parent',cndtAx);
-scatter(tracked_candidate_keypoints(1,:), tracked_candidate_keypoints(2,:),'rx','Linewidth',2, 'Parent',cndtAx);
+plotMatchVectors(candidate_keypoints_first(:,prev_frame_idx), tracked_candidate_keypoints, 'c', cndtAx)
+
 
 % Remove nontracked candidates after plotting
 candidate_bearings_first = candidate_bearings_first(:,prev_frame_idx);
@@ -301,6 +294,16 @@ tracked_landmarks = [tracked_landmarks, new_landmarks];
 tracked_landmarks_frame_keypoints = [tracked_landmarks_frame_keypoints, tracked_candidate_keypoints(:,did_triangulate)];
 tracked_landmarks_frame_descriptors = [tracked_landmarks_frame_descriptors, tracked_candidate_descriptors(:,did_triangulate)];
 
+% Validation plot new landmarks
+%scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', cndtAx);
+plotMatchVectors(candidate_keypoints_first(:,can_triangulate), tracked_candidate_keypoints(:,can_triangulate), 'r', cndtAx);
+plotMatchVectors(candidate_keypoints_first(:,did_triangulate), tracked_candidate_keypoints(:,did_triangulate), 'g', cndtAx);
+title(['Tracked candidate keypoints from last frame, #tracked = ',num2str(N_candidates_tracked), ', #triangulated = ', num2str(length(can_triangulate)), ', #new landmarks ', num2str(size(new_landmarks,2))],'Parent',cndtAx);
+legend(cndtAx,'tracked','triangulation failed', 'new landmark','Location','so','Orientation','horizontal','Box','off');
+scatter(new_landmarks(3,:), -new_landmarks(1,:),'.r', 'Parent', mapAx);
+axis(mapAx,'equal');
+
+
 if use_KLT
     tracked_landmarks_transforms = [tracked_landmarks_transforms,...
         [zeros(4,size(tracked_candidate_keypoints(:,did_triangulate),2));tracked_candidate_keypoints(:,did_triangulate)]];
@@ -314,15 +317,7 @@ candidate_bearings_first = candidate_bearings_first(:, not_triangulated);
 candidate_keypoints_first = candidate_keypoints_first(:, not_triangulated);
 candidate_pose_idx_first = candidate_pose_idx_first(not_triangulated);
 
-% Validation plot new landmarks
-%set(0,'CurrentFigure',4);
-scatter(p2(1,:),p2(2,:),'g','Linewidth',2, 'Parent', cndtAx);
-title(['Tracked candidate keypoints from last frame, #tracked = ',num2str(N_candidates_tracked), ', #triangulated = ', num2str(length(can_triangulate)), ', #new landmarks ', num2str(size(new_landmarks,2))],'Parent',cndtAx);
 
-
-%set(0,'CurrentFigure',2);
-scatter(new_landmarks(3,:), -new_landmarks(1,:),'.r', 'Parent', mapAx);
-axis(mapAx,'equal');
 
 %% Set return value and update state
 pose = H_WC; 

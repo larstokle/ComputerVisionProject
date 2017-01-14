@@ -179,8 +179,8 @@ if do_plot
     figure(11);
     subplot(1,3,[1 2]);
     imshow(img); hold on;
-    plotMatchVectors_color(landmark_keypoints_prev(:,inliers==0),landmark_keypoints(:,inliers==0),'r');
-    plotMatchVectors_color(landmark_keypoints_prev(:,inliers),landmark_keypoints(:,inliers),'g');
+    plotMatchVectors(landmark_keypoints_prev(:,inliers==0),landmark_keypoints(:,inliers==0),'r');
+    plotMatchVectors(landmark_keypoints_prev(:,inliers),landmark_keypoints(:,inliers),'g');
     title(['Tracked points. Num inliers=' num2str(nnz(inliers)) ' Num outliers=' num2str(nnz(inliers==0))]);
 
     subplot(1,3,3);
