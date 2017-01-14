@@ -1,8 +1,10 @@
 %% init parameters
-VOpipe = 0; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
+VOpipe = 2; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
-
+makeVid = true;
+videoFilename = 'VOplots';
+fps = 4;
 %% Setup
 fh = figure(1);clf;
 set(fh, 'Color','white','Position', get(0,'Screensize'));
@@ -10,6 +12,8 @@ ax2 = axes('Position',[0.075, 0.1, 0.4, 0.4]); hold(ax2,'on'); set(ax2, 'Box','o
 ax3 = axes('Position',[0.075, 0.6, 0.4, 0.3]); set(ax3, 'Box', 'off', 'Visible','off'); 
 ax4 = axes('Position',[0.525, 0.6, 0.4, 0.3]); set(ax4, 'Box', 'off', 'Visible','off'); 
 ax5 = axes('Position',[0.525, 0.1, 0.4, 0.4]); hold(ax5,'on'); set(ax5, 'Box','on', 'YaxisLocation','right');
+
+
 
 plotAx.map = ax2;
 plotAx.lndmrk = ax3;
@@ -24,10 +28,11 @@ title(ax5, 'Height');
 xlabel(ax5, 'Camera Z-axis');
 ylabel(ax5, 'Camera negative Y-axis');
 
-% figure(2); clf; ax2 = gca; hold(ax2,'on');
-% figure(3); clf; ax3 = gca;
-% figure(4); clf; ax4 = gca;
-% figure(5); clf; ax5 = gca; hold(ax5,'on');
+if makeVid
+    vidObj = VideoWriter(videoFilename,'Motion JPEG AVI'); % Prepare video file
+    vidObj.FrameRate = fps;
+    open(vidObj);
+end
 
 local_setup; %sets up the right folders
 addpath(genpath([pwd,'\src']));
@@ -138,6 +143,7 @@ range = (bootstrap_frames(2)+1):last_frame;
 % figure(2); clf; ax2 = gca; hold(ax2,'on');
 % figure(5); clf; ax5 = gca; hold(ax5,'on');
 
+try
 for i = range
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
     if ds == 0
@@ -192,6 +198,15 @@ for i = range
          
     end
     toc
+    if makeVid
+        writeVideo(vidObj, getframe(fh));
+    end
 end
-
+catch e
+    if makeVid
+        close(vidObj);
+        disp('==== videoObj safely closed ==== ');
+    end
+    rethrow(e);
+end
 %% aftermath
