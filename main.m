@@ -1,5 +1,5 @@
 %% init parameters
-VOpipe = 2; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
+VOpipe = 1; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 makeVid = true;
@@ -182,7 +182,7 @@ for i = range
         
     elseif VOpipe == 1 % 1: monocular 1p-histogram with 8point essential matrix
         
-        [pose, state] = processFrame3(image, K, pose, state);
+        [pose, state] = processFrame3(image, K, pose, state,plotAx);
         %state = tracker(image,state);
 
         plotPoseXY(ax2,pose);
