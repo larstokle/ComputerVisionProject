@@ -1,11 +1,10 @@
-function main()
 %% init parameters
-VOpipe = 2; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
+VOpipe = 1; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO, 3: Mono with stereo init
 
-ds = 1; % 0: KITTI, 1: Malaga, 2: parking
+ds = 0; % 0: KITTI, 1: Malaga, 2: parking
 
 
-makeVid = true;
+makeVid = false;
 videoFilename = 'VOplots';
 fps = 4;
 
@@ -46,7 +45,7 @@ else
 end
 
 % path setup
-local_setup; %sets up the right folders
+%local_setup; %sets up the right folders
 addpath(genpath([pwd,'\src']));
 addpath('inits');
 addpath('process_frames');
@@ -82,7 +81,7 @@ elseif ds == 1
         0 0 1];
     frameStep = 1;
 elseif ds == 2
-    bootstrap_frames = [10 13];
+    bootstrap_frames = [17 19];
     % Path containing images, depths and all...
     assert(exist('parking_path', 'var') ~= 0);
     last_frame = 598;
@@ -224,13 +223,12 @@ for i = range
     
 end
 
-end
 
-function endFunc(vidObj)
-if exist('vidObj','var')
-    close(vidObj);
-end 
-global state;
-save('state.mat','state');
-plotRotations(state);
-end
+% function endFunc(vidObj)
+% if exist('vidObj','var')
+%     close(vidObj);
+% end 
+% global state;
+% save('state.mat','state');
+% plotRotations(state);
+% end

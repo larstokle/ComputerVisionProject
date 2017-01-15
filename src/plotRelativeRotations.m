@@ -25,6 +25,6 @@ legend('X','Y','Z');
 title('Rotation vector coords. H_{i-1,i} for each frame i');
 xlabel('Frame number');
 ylabel('rotation coord [deg]');
-ylim([-50 50]);
+ylim([-4 4]);
 
 end
