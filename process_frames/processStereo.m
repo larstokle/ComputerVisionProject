@@ -1,4 +1,8 @@
 function [T, S] = processStereo(img_l,img_r,K, baseline, state, plotAx)
+%% options 
+use_AckermannConstraint = true;
+keep_tracked = false;
+
 %% init
 mapAx = plotAx.map;
 lndmrkAx = plotAx.lndmrk;
@@ -10,7 +14,7 @@ debug = true;
 % parameters
 harris_patch_size = 9;
 harris_kappa = 0.08;
-num_keypoints = 1000;
+num_keypoints = 2000;
 nonmaximum_supression_radius = 8;
 descriptor_radius = 9;
 r = descriptor_radius;
@@ -24,20 +28,22 @@ patch_size = (2*r+1);
 
 disp_patch_radius = 5;
 
-reprojection_pix_tol = 2.5;
+reprojection_pix_tol = 3;
 
 %% extract keypoints
 harrisScore = harris(img_l, harris_patch_size, harris_kappa);
 corners = selectKeypoints(harrisScore, num_keypoints, nonmaximum_supression_radius);
 cornersInds = sub2ind(size(img_l),corners(1,:),corners(2,:));
-[sortedCornersInds,cornersOrderToLinear] = sort(cornersInds);
-corners = corners(:,cornersOrderToLinear); % does this ruin the best corners first?
 
 %% triangulate
 dispMap = getDisparityAtPoints(img_l,img_r, corners, disp_patch_radius, min_disp, max_max_disp);
+corners(:,dispMap(cornersInds) == 0 ) = [];
+cornersInds = sub2ind(size(img_l),corners(1,:),corners(2,:));
+[~, cornersOrderToLinear] = sort(cornersInds);
+[~, linearToCornersOrder] = sort(cornersOrderToLinear);
 landmarks = disparityToPointCloud(dispMap, K, baseline, img_l);
+landmarks = landmarks(:,linearToCornersOrder);
 
-corners = corners(:,dispMap(sortedCornersInds) > 0);
 descriptors = describeKeypoints(img_l, corners, descriptor_radius);
 corners = flipud(corners);
 
@@ -53,11 +59,15 @@ if  ~isempty(state)
     prev_landmarks = state.landmarks;
 
     %% track keypoints from last frame
-    matches =  matchDescriptorsAckermannConstrained(prev_descriptors, descriptors,...
-                                                    prev_corners, corners,...
-                                                    match_lambda, K, max_epipolar_dist, max_corner_dist);
-
-%    matches = matchDescriptors(prev_descriptors, descriptors, match_lambda);
+    if use_AckermannConstraint
+        matches =  matchDescriptorsAckermannConstrained(prev_descriptors, descriptors,...
+                                                        prev_corners, corners,...
+                                                        match_lambda, K, max_epipolar_dist, max_corner_dist);
+    else
+        matches = matchDescriptorsLocally(prev_descriptors, descriptors,...
+                                          prev_corners, corners,...
+                                          match_lambda, max_corner_dist);
+    end
     [~, indx_prev, indx_frame] = find(matches);
     tracked_landmarks = prev_landmarks(:,indx_prev);
     
@@ -76,26 +86,30 @@ if  ~isempty(state)
     end
     
     %% sort tracked and untracked to keep world frame better
-    indx_frame = indx_frame(inliers); 
-    indx_prev = indx_prev(inliers);
-    tracked_landmarks = tracked_landmarks(:,inliers);
-    
-    
-    landmarks(:,indx_frame) = [];
-    landmarks = eye(3,4)*H_W_frame*[landmarks;ones(1,size(landmarks,2))]; %set them to world frame;
-    
-    scatter(landmarks(3,:), -landmarks(1,:),'.c', 'Parent', mapAx);
-    
-    tracked_corners = corners(:,indx_frame);
-    tracked_descriptors = descriptors(:,indx_frame);
-    
-    corners(:,indx_frame) = [];
-    descriptors(:,indx_frame) = [];
-    
-    landmarks = [tracked_landmarks, landmarks];
-    corners = [tracked_corners,corners];
-    descriptors = [tracked_descriptors,descriptors];
-   
+    if keep_tracked
+        indx_frame = indx_frame(inliers); 
+        indx_prev = indx_prev(inliers);
+        tracked_landmarks = tracked_landmarks(:,inliers);
+
+
+        landmarks(:,indx_frame) = [];
+        landmarks = eye(3,4)*H_W_frame*[landmarks;ones(1,size(landmarks,2))]; %set them to world frame;
+
+        scatter(landmarks(3,:), -landmarks(1,:),'.c', 'Parent', mapAx);
+
+        tracked_corners = corners(:,indx_frame);
+        tracked_descriptors = descriptors(:,indx_frame);
+
+        corners(:,indx_frame) = [];
+        descriptors(:,indx_frame) = [];
+
+        landmarks = [tracked_landmarks, landmarks];
+        corners = [tracked_corners,corners];
+        descriptors = [tracked_descriptors,descriptors];
+    else
+        landmarks = eye(3,4)*H_W_frame*[landmarks;ones(1,size(landmarks,2))];
+        scatter(landmarks(3,indx_frame(inliers)), -landmarks(1,indx_frame(inliers)),'.c', 'Parent', mapAx);
+    end
 else
     H_W_frame = eye(4);
     H_frame_W = eye(4);

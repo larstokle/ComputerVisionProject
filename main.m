@@ -1,8 +1,8 @@
 function main()
 %% init parameters
-VOpipe = 1; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
+VOpipe = 2; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
 
-ds = 0; % 0: KITTI, 1: Malaga, 2: parking
+ds = 1; % 0: KITTI, 1: Malaga, 2: parking
 
 
 makeVid = true;
@@ -65,6 +65,7 @@ if ds == 0
     K = [7.188560000000e+02 0 6.071928000000e+02
         0 7.188560000000e+02 1.852157000000e+02
         0 0 1];
+    frameStep = 1;
 elseif ds == 1
     bootstrap_frames = [1 3];
     baseline = 0.119471;
@@ -79,6 +80,7 @@ elseif ds == 1
     K = [621.18428 0 404.0076
         0 621.18428 309.05989
         0 0 1];
+    frameStep = 1;
 elseif ds == 2
     bootstrap_frames = [10 13];
     % Path containing images, depths and all...
@@ -88,6 +90,7 @@ elseif ds == 2
      
     ground_truth = load([parking_path '/poses.txt']);
     ground_truth = ground_truth(:, [end-8 end]);
+    frameStep = 1;
 else
     assert(false);
 end
@@ -130,7 +133,7 @@ elseif VOpipe == 1
 elseif VOpipe == 2 || VOpipe == 3
     assert(ds ~= 2,'Not stereo images for paring');
     state = [];
-    for i = bootstrap_frames(1):bootstrap_frames(2)
+    for i = bootstrap_frames(1):frameStep:bootstrap_frames(2)
         if ds == 0
             img_l = imread([kitti_path '/00/image_0/' ...
                 sprintf('%06d.png',i)]);
@@ -152,7 +155,7 @@ elseif VOpipe == 2 || VOpipe == 3
 end
 
 %% init continuous operation
-range = (bootstrap_frames(2)+1):last_frame;
+range = (bootstrap_frames(2)+1):frameStep:last_frame;
 
 % figure(2); clf; ax2 = gca; hold(ax2,'on');
 % figure(5); clf; ax5 = gca; hold(ax5,'on');
@@ -160,7 +163,7 @@ range = (bootstrap_frames(2)+1):last_frame;
 th = text(ax1,0.5,0.95,sprintf('Frame %i',range(1)-1),'Editing','on','FontSize',16,'HorizontalAlignment','center');
 for i = range
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
-    set(th,'String',sprintf('Frame %i',i)); drawnow;
+    set(th,'String',sprintf('Frame %i',i));
     if ds == 0
         image = imread([kitti_path '/00/image_0/' sprintf('%06d.png',i)]);
         if VOpipe==2
@@ -192,7 +195,6 @@ for i = range
         plotPoseXY(ax2,pose);
         axis(ax2,'equal');
         plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
-        drawnow;
         %pause;
         prev_img = image;
         
@@ -204,7 +206,7 @@ for i = range
         plotPoseXY(ax2,pose);
         axis(ax2,'equal');
         plot(ax5,[state.poses(12+3,end-1), state.poses(12+3,end)],-[state.poses(12+2,end-1), state.poses(12+2,end)],'b')
-        drawnow;
+        
 
         prev_img = image;
         
@@ -214,9 +216,12 @@ for i = range
          
     end
     toc
+    refreshdata(ax1);
+    drawnow;
     if makeVid
         writeVideo(vidObj, getframe(fh));
     end
+    
 end
 
 end
