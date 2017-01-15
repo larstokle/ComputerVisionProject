@@ -1,17 +1,11 @@
-function [pose, state] = processFrame3(img, K, H_W_prev, oldState)
-        
-%% Dependencies
-% addpath('init_dependencies/8point/');
-% addpath('continuous_dependencies/all_solns/00_camera_projection');
-% addpath('continuous_dependencies/all_solns/01_pnp');
-% addpath('continuous_dependencies/all_solns/02_detect_describe_match');
-% addpath('continuous_dependencies/all_solns/04_8point', 'continuous_dependencies/all_solns/04_8point/triangulation', 'continuous_dependencies/all_solns/04_8point/8point');
-% addpath('continuous_dependencies/all_solns/05_ransac');
-% addpath('continuous_dependencies/all_solns/07_LK_Tracker');
-% addpath('continuous_dependencies/');
+function [pose, state] = processFrame3(img, K, H_W_prev, oldState,plotAx)
 
 %% Options
 do_plot = true;
+mapAx = plotAx.map;
+lndmrkAx = plotAx.lndmrk;
+heightAx = plotAx.height;
+ageAx = plotAx.cndt;
 
 %% Extract variables from previous state
 poses = oldState.poses;
@@ -175,36 +169,41 @@ end
 
 
 if do_plot
+    cla(lndmrkAx);
+    imshow(img,'Parent',lndmrkAx);
+    hold(lndmrkAx,'on');
+    plotMatchVectors(landmark_keypoints_prev(:,inliers==0), landmark_keypoints(:,inliers==0),'r',lndmrkAx);
+    plotMatchVectors(landmark_keypoints_prev(:,inliers), landmark_keypoints(:,inliers),'g',lndmrkAx);
+    title(lndmrkAx,['Tracked points. Num inliers=' num2str(nnz(inliers)) ' Num outliers=' num2str(nnz(inliers==0)) ' Num matches=' num2str(nnz(has_match))])
+    lh = legend(lndmrkAx,'Outliers','Inliers');
+    set(lh,'Location','southoutside','Orientation','horizontal','Box','off');
 
-    figure(11);
-    subplot(1,3,[1 2]);
-    imshow(img); hold on;
-    plotMatchVectors(landmark_keypoints_prev(:,inliers==0),landmark_keypoints(:,inliers==0),'r');
-    plotMatchVectors(landmark_keypoints_prev(:,inliers),landmark_keypoints(:,inliers),'g');
-    title(['Tracked points. Num inliers=' num2str(nnz(inliers)) ' Num outliers=' num2str(nnz(inliers==0))]);
-
-    subplot(1,3,3);
     frames_in = sort(unique(first_obs(inliers)));
     freq_in = sum(ones(size(frames_in'))*first_obs(inliers) == frames_in'*ones(size(first_obs(inliers))),2);
-    plot(frames_in,freq_in,'g-');
-    hold on
     frames_out = sort(unique(first_obs(inliers==0)));
     freq_out = sum(ones(size(frames_out'))*first_obs(inliers==0) == frames_out'*ones(size(first_obs(inliers == 0))),2);
-    plot(frames_out,freq_out,'r-');
+    
+    cla(ageAx);
+    plot(ageAx,frames_out,freq_out,'r-');
+    hold(ageAx,'on')
+    plot(ageAx,frames_in,freq_in,'g-');
+    title(ageAx,'Age of tracked keypoints')
+    lh = legend(ageAx,'Outliers','Inliers');
+    set(lh,'Location','southoutside','Orientation','horizontal','Box','off');
 
     % Guard. If min==max matlab complains
     if (min([frames_in,frames_out])-max([frames_in,frames_out]))>0
-        xlim([min([frames_in,frames_out]) max([frames_in,frames_out])]);
+        xlim(ageAx,[min([frames_in,frames_out]) max([frames_in,frames_out])]);
     end
 
     % Guard. If 0==max matlab complains
     if max([freq_in(:);freq_out(:)]')>0
-        ylim([0 max([freq_in(:);freq_out(:)]')])
+        ylim(ageAx,[0 max([freq_in(:);freq_out(:)]')])
     end
 
     assert(nnz(inliers)==sum(freq_in));
     assert(nnz(inliers==0)==sum(freq_out));
-    hold off;
+    hold(ageAx,'off')
     drawnow;
 
 end
