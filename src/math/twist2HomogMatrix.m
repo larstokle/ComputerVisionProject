@@ -10,7 +10,7 @@ function H = twist2homogMatrix(twist)
 v = twist(1:3); % linear part
 w = twist(4:6); % angular part
 
-se_matrix = [cross2matrix(w), v; 0 0 0 0]; % Lie algebra matrix
+se_matrix = [Cross2Matrix(w), v; 0 0 0 0]; % Lie algebra matrix
 H = expm(se_matrix);
 
 end

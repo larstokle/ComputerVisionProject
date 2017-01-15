@@ -26,7 +26,7 @@ if max_epipole_line_dist ~= 0
     R_21 = H_21(1:3,1:3);
     
     % Calculate essential matrix
-    E_21 = cross2matrix(T_21)*R_21;
+    E_21 = Cross2Matrix(T_21)*R_21;
    
     % Calculate fundamental matrix
     F_21 = inv(K')*E_21*inv(K);
