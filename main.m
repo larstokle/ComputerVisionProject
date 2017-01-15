@@ -1,20 +1,26 @@
+function main()
 %% init parameters
 VOpipe = 2; % 0: monocular p3p RANSAC, 1: monocular 1p-histogram with 8point essential matrix, 2: stereo VO
 
 ds = 0; % 0: KITTI, 1: Malaga, 2: parking
+
+
 makeVid = true;
 videoFilename = 'VOplots';
 fps = 4;
+
 %% Setup
-fh = figure(1);clf;
+%plot setup
+fh = figure(1);clf;drawnow;
 set(fh, 'Color','white','Position', get(0,'Screensize'));
+ax1 = axes('Position',[0,0,1,1]); set(ax1,'Box','off','Visible','off','Color','none');
 ax2 = axes('Position',[0.075, 0.1, 0.4, 0.4]); hold(ax2,'on'); set(ax2, 'Box','on');
 ax3 = axes('Position',[0.075, 0.6, 0.4, 0.3]); set(ax3, 'Box', 'off', 'Visible','off'); 
 ax4 = axes('Position',[0.525, 0.6, 0.4, 0.3]); set(ax4, 'Box', 'off', 'Visible','off'); 
 ax5 = axes('Position',[0.525, 0.1, 0.4, 0.4]); hold(ax5,'on'); set(ax5, 'Box','on', 'YaxisLocation','right');
 
 
-
+plotAx.main = ax1;
 plotAx.map = ax2;
 plotAx.lndmrk = ax3;
 plotAx.cndt = ax4;
@@ -28,12 +34,18 @@ title(ax5, 'Height');
 xlabel(ax5, 'Camera Z-axis');
 ylabel(ax5, 'Camera negative Y-axis');
 
+
+% video setup
 if makeVid
     vidObj = VideoWriter(videoFilename,'Motion JPEG AVI'); % Prepare video file
     vidObj.FrameRate = fps;
     open(vidObj);
+    cleanupObj = onCleanup(@()endFunc(vidObj));
+else
+    cleanupObj = onCleanup(@()endFunc());
 end
 
+% path setup
 local_setup; %sets up the right folders
 addpath(genpath([pwd,'\src']));
 addpath('inits');
@@ -68,7 +80,7 @@ elseif ds == 1
         0 621.18428 309.05989
         0 0 1];
 elseif ds == 2
-    bootstrap_frames = [1 3];
+    bootstrap_frames = [10 13];
     % Path containing images, depths and all...
     assert(exist('parking_path', 'var') ~= 0);
     last_frame = 598;
@@ -105,18 +117,17 @@ else
 end
 
 %% run bootstrap
+global state;
 if VOpipe == 0 %0: monocular p3p RANSAC
     %% init
-    disp('Start kitti init');
     [pose, state] = init(img0,img1,K);
-    disp('Kitti init finished');
 
     save('other_data/bootstrap_kitti_pose','pose');
     save('other_data/bootstrap_kitti_state','state');  
 elseif VOpipe == 1
     [pose, state] = oneP_init(img1);
     
-elseif VOpipe == 2
+elseif VOpipe == 2 || VOpipe == 3
     assert(ds ~= 2,'Not stereo images for paring');
     state = [];
     for i = bootstrap_frames(1):bootstrap_frames(2)
@@ -135,6 +146,9 @@ elseif VOpipe == 2
         end
         [pose,state] = processStereo(img_l, img_r, K, baseline, state, plotAx);
     end
+    if VOpipe ==3
+        state = stereo2monoState(state,K);
+    end
 end
 
 %% init continuous operation
@@ -143,9 +157,10 @@ range = (bootstrap_frames(2)+1):last_frame;
 % figure(2); clf; ax2 = gca; hold(ax2,'on');
 % figure(5); clf; ax5 = gca; hold(ax5,'on');
 
-try
+th = text(ax1,0.5,0.95,sprintf('Frame %i',range(1)-1),'Editing','on','FontSize',16,'HorizontalAlignment','center');
 for i = range
     fprintf('\n\nProcessing frame %d\n=====================\n', i);
+    set(th,'String',sprintf('Frame %i',i)); drawnow;
     if ds == 0
         image = imread([kitti_path '/00/image_0/' sprintf('%06d.png',i)]);
         if VOpipe==2
@@ -167,8 +182,9 @@ for i = range
     end
     
     tic;
-%% run continous operation
-    if VOpipe == 0 % 0: monocular p3p RANSAC
+    
+    %% run continous operation
+    if VOpipe == 0 || VOpipe == 3% 0: monocular p3p RANSAC
         
         [pose, state] = processFrame(image, K, pose, state,plotAx);
         
@@ -202,11 +218,14 @@ for i = range
         writeVideo(vidObj, getframe(fh));
     end
 end
-catch e
-    if makeVid
-        close(vidObj);
-        disp('==== videoObj safely closed ==== ');
-    end
-    rethrow(e);
+
 end
-%% aftermath
+
+function endFunc(vidObj)
+if exist('vidObj','var')
+    close(vidObj);
+end 
+global state;
+save('state.mat','state');
+plotRotations(state);
+end

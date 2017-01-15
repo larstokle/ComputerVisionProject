@@ -47,7 +47,7 @@ max_epipole_line_dist_lndmrk = 30;
 match_lambda_candidates = 7;
 max_epipole_line_dist_cndt = 15;
 max_match_dist_cndt = 150;
-triangulationAngleThresh = 2*pi/180;
+triangulationAngleThresh = 4*pi/180;
 triangulationCosThresh = cos(triangulationAngleThresh);
 new_landmarks_distance_limit = 60;
 
@@ -187,7 +187,7 @@ hold(lndmrkAx,'on');
 
 scatter(landmark_prev_keypoints(1,:), landmark_prev_keypoints(2,:), 'yx','Linewidth',2','Parent',lndmrkAx);
 plotMatchVectors(tracked_landmarks_prev_keypoints, tracked_landmarks_frame_keypoints, 'r',lndmrkAx);
-title('Landmarks tracked from previous frame','Parent',lndmrkAx);
+
 
 %% Estimate relative pose
 
@@ -207,7 +207,7 @@ tracked_landmarks_prev_keypoints = tracked_landmarks_prev_keypoints(:,inliers);
 %validate ransac
 plotMatchVectors(tracked_landmarks_prev_keypoints, tracked_landmarks_frame_keypoints, 'g', lndmrkAx);
 legend(lndmrkAx,'Landmarks', 'tracked outliers', 'tracked inliers','Location','so','Orientation','horizontal','Box','off');
-
+title({'Landmarks tracked from previous frame';sprintf('#tracked: %i, #inliers: %i, ratio: %f',length(current_frame_idx),sum(inliers),sum(inliers)/length(current_frame_idx))},'Parent',lndmrkAx);
 %% Compute homogenous transforms
 H_WC = H_CW\eye(4);     % World to 1
 H_prev_C = H_W_prev\H_WC;

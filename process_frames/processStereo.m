@@ -24,7 +24,7 @@ patch_size = (2*r+1);
 
 disp_patch_radius = 5;
 
-reprojection_pix_tol = 4;
+reprojection_pix_tol = 2.5;
 
 %% extract keypoints
 harrisScore = harris(img_l, harris_patch_size, harris_kappa);
@@ -70,7 +70,7 @@ if  ~isempty(state)
         hold(lndmrkAx,'on');
         plotMatchVectors(prev_corners(:,indx_prev), corners(:,indx_frame),'r',lndmrkAx);
         plotMatchVectors(prev_corners(:,indx_prev(inliers)), corners(:,indx_frame(inliers)),'g',lndmrkAx);
-        title(lndmrkAx,'Tracked Landmarks')
+        title(lndmrkAx,{'Tracked Landmarks';sprintf('#tracked: %i, #inliers: %i, ratio %f',length(indx_frame),sum(inliers),sum(inliers)/length(indx_frame))});
         lh = legend(lndmrkAx,'Outliers','Inliers');
         set(lh,'Location','southoutside','Orientation','horizontal','Box','off');
     end
